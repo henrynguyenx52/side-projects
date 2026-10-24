@@ -1,0 +1,48 @@
+{
+  "browser": {
+    "mode": "launch",
+    "executable_path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "headless": true
+  },
+  "start_url": {
+    "url": "https://tuhoc.dolenglish.vn/luyen-thi-ielts/luyen-tap-mt-reading-test-2",
+    "query": []
+  },
+  "environment": {
+    "viewport": { "width": 1440, "height": 900, "device_scale_factor": 1 },
+    "locale": "en-US",
+    "timezone": "UTC",
+    "color_scheme": "light",
+    "reduced_motion": "reduce",
+    "service_workers": "block"
+  },
+  "actions": [
+    {
+      "step_id": "wait_nav",
+      "action": "wait_for",
+      "locator": { "kind": "css", "selector": ".btn-question-navigation" },
+      "state": "visible",
+      "timeout_ms": 20000
+    },
+    {
+      "step_id": "open_next_group",
+      "action": "click",
+      "locator": { "kind": "css", "selector": ".btn-question-navigation" },
+      "button": "left",
+      "click_count": 1
+    },
+    {
+      "step_id": "settle",
+      "action": "wait_for_timeout",
+      "duration_ms": 1200
+    }
+  ],
+  "storage": { "cookies": [], "local_storage": [], "session_storage": [] },
+  "secrets": [],
+  "capture": {
+    "after_each_step": [],
+    "at_end": ["screenshot", "accessibility"],
+    "events": ["page-errors"],
+    "network": { "request_body": false, "response_body": false, "header_values": false }
+  }
+}

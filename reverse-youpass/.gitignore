@@ -1,0 +1,8 @@
+node_modules
+.next
+out
+*.log
+evidence/capture-load.json
+evidence/capture-groups.json
+evidence/inspect-page.json
+evidence/page.png
