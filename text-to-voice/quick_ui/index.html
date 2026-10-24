@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZeroTTS</title>
+  <style>
+    :root {
+      --bg: #efe6d4;
+      --card: #f7f1e4;
+      --ink: #1d1914;
+      --muted: #6f6558;
+      --line: #ddd1ba;
+      --accent: #9c341f;
+      --accent-ink: #fff7f2;
+      --chip: #efe4cf;
+      --chip-on: #1d1914;
+      --chip-on-ink: #f7f1e4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(900px 420px at 10% -10%, #f6edd9 0%, transparent 60%),
+        var(--bg);
+      color: var(--ink);
+      font: 16px/1.45 "Avenir Next", "Segoe UI", sans-serif;
+    }
+    main {
+      width: min(680px, calc(100% - 32px));
+      margin: 24px auto 48px;
+    }
+    header h1 {
+      margin: 0;
+      font-family: "Iowan Old Style", Palatino, Georgia, serif;
+      font-size: 34px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+    }
+    header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+    form {
+      margin-top: 18px;
+      padding: 18px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      display: grid;
+      gap: 12px;
+    }
+    label, .label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      color: var(--ink);
+      border-radius: 10px;
+      font: inherit;
+      padding: 10px 12px;
+    }
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+    select:focus, textarea:focus {
+      outline: 2px solid #e7b2a6;
+      border-color: var(--accent);
+    }
+    .hint { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chips button {
+      border: 1px solid var(--line);
+      background: var(--chip);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+    .chips button[aria-pressed="true"] {
+      background: var(--chip-on);
+      color: var(--chip-on-ink);
+      border-color: var(--chip-on);
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    button.primary, button.secondary {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 18px;
+      font: inherit;
+      cursor: pointer;
+    }
+    button.primary { background: var(--accent); color: var(--accent-ink); }
+    button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    button:disabled { opacity: 0.45; cursor: progress; }
+    audio { width: 100%; margin-top: 4px; }
+    #status { min-height: 1.3em; color: var(--muted); font-size: 14px; }
+    #status.error { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>ZeroTTS</h1>
+      <p>Type a line, pick a voice, and play it on this Mac.</p>
+    </header>
+    <form id="form">
+      <div>
+        <label for="language">Language</label>
+        <select id="language"></select>
+        <p class="hint" id="language-hint" hidden></p>
+      </div>
+      <div>
+        <span class="label">Voice</span>
+        <div class="chips" id="genders" role="group" aria-label="Voice variation"></div>
+      </div>
+      <div>
+        <label for="voice">Variation</label>
+        <select id="voice"></select>
+      </div>
+      <div>
+        <label for="text">Text</label>
+        <textarea id="text">Xin chào các bạn. Hôm nay là ngày 24/10/2026, trời đẹp quá.</textarea>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="sample" type="button">Hear sample</button>
+        <button class="primary" id="speak" type="button">Speak</button>
+        <button class="secondary" id="download" type="button" disabled>Download</button>
+      </div>
+      <audio id="player" controls></audio>
+      <p id="status" aria-live="polite"></p>
+    </form>
+  </main>
+  <script>
+    const languageEl = document.querySelector("#language");
+    const hintEl = document.querySelector("#language-hint");
+    const gendersEl = document.querySelector("#genders");
+    const voiceEl = document.querySelector("#voice");
+    const textEl = document.querySelector("#text");
+    const sampleBtn = document.querySelector("#sample");
+    const speakBtn = document.querySelector("#speak");
+    const downloadBtn = document.querySelector("#download");
+    const player = document.querySelector("#player");
+    const statusEl = document.querySelector("#status");
+
+    let catalog = { languages: [], genders: [], voices: [] };
+    let gender = "all";
+    let spokenUrl = null;
+    let spokenName = "";
+
+    function filenameFromText(text) {
+      const words = text.trim().split(/\s+/)
+        .map((word) => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""))
+        .filter(Boolean)
+        .slice(0, 3);
+      const base = words.join(" ").replace(/[\\/:*?"<>|\u0000-\u001f]/g, "").trim();
+      return `${base || "speech"}.wav`;
+    }
+
+    function setStatus(message, isError) {
+      statusEl.textContent = message;
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function voicesFor(lang, genderId) {
+      return catalog.voices.filter((voice) => {
+        if (voice.language !== lang) return false;
+        if (genderId !== "all" && voice.gender !== genderId) return false;
+        return true;
+      });
+    }
+
+    function fillVoices() {
+      const previous = voiceEl.value;
+      const list = voicesFor(languageEl.value, gender);
+      voiceEl.replaceChildren();
+      for (const voice of list) {
+        const option = document.createElement("option");
+        option.value = voice.name;
+        const detail = voice.description || voice.gender_label;
+        option.textContent = detail ? `${voice.display_name} — ${detail}` : voice.display_name;
+        voiceEl.appendChild(option);
+      }
+      if (list.some((voice) => voice.name === previous)) voiceEl.value = previous;
+      const current = list.find((voice) => voice.name === voiceEl.value);
+      sampleBtn.disabled = !current || !current.has_preview;
+      if (!list.length) setStatus("No voices for this language.", true);
+    }
+
+    function fillGenders() {
+      const lang = languageEl.value;
+      const present = new Map();
+      for (const voice of catalog.voices) {
+        if (voice.language === lang && voice.gender) present.set(voice.gender, voice.gender_label);
+      }
+      gendersEl.replaceChildren();
+      const chips = [["all", "All"]];
+      for (const [id, label] of present) chips.push([id, label]);
+      if (!present.has(gender)) gender = "all";
+      for (const [id, label] of chips) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.setAttribute("aria-pressed", String(id === gender));
+        button.addEventListener("click", () => {
+          gender = id;
+          for (const other of gendersEl.querySelectorAll("button")) {
+            other.setAttribute("aria-pressed", String(other === button));
+          }
+          fillVoices();
+        });
+        gendersEl.appendChild(button);
+      }
+      gendersEl.hidden = present.size < 2;
+    }
+
+    function selectedVoice() {
+      return catalog.voices.find((voice) => voice.name === voiceEl.value);
+    }
+
+    async function playUrl(url, message) {
+      player.src = url;
+      setStatus(message, false);
+      player.scrollIntoView({ block: "nearest" });
+      try {
+        await player.play();
+      } catch {
+        setStatus(message + " Press play if it did not start.", false);
+      }
+    }
+
+    languageEl.addEventListener("change", () => {
+      gender = "all";
+      fillGenders();
+      fillVoices();
+    });
+
+    sampleBtn.addEventListener("click", () => {
+      const voice = selectedVoice();
+      if (!voice) return;
+      playUrl(`/api/preview?voice=${encodeURIComponent(voice.name)}`, `Sample · ${voice.display_name}`);
+    });
+
+    downloadBtn.addEventListener("click", () => {
+      if (!spokenUrl) return;
+      const link = document.createElement("a");
+      link.href = spokenUrl;
+      link.download = spokenName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+
+    speakBtn.addEventListener("click", async () => {
+      const voice = selectedVoice();
+      const text = textEl.value.trim();
+      if (!voice || !text) {
+        setStatus("Choose a voice and enter some text.", true);
+        return;
+      }
+      speakBtn.disabled = true;
+      sampleBtn.disabled = true;
+      downloadBtn.disabled = true;
+      setStatus(`Speaking as ${voice.display_name}…`, false);
+      try {
+        const response = await fetch("/api/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, voice: voice.name }),
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || `Request failed (${response.status})`);
+        }
+        const duration = Number(response.headers.get("X-Duration") || 0);
+        const elapsed = Number(response.headers.get("X-Elapsed") || 0);
+        const blob = await response.blob();
+        if (spokenUrl) URL.revokeObjectURL(spokenUrl);
+        spokenUrl = URL.createObjectURL(blob);
+        spokenName = filenameFromText(text);
+        downloadBtn.dataset.filename = spokenName;
+        const speed = elapsed > 0 ? (duration / elapsed).toFixed(1) : "?";
+        await playUrl(spokenUrl, `${duration.toFixed(1)}s of audio in ${elapsed.toFixed(1)}s (${speed}×) · ${voice.display_name}`);
+      } catch (err) {
+        setStatus(err.message || "Could not synthesize.", true);
+      } finally {
+        speakBtn.disabled = false;
+        downloadBtn.disabled = !spokenUrl;
+        const current = selectedVoice();
+        sampleBtn.disabled = !current || !current.has_preview;
+      }
+    });
+
+    textEl.addEventListener("keydown", (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") speakBtn.click();
+    });
+
+    fetch("/api/catalog").then((response) => response.json()).then((payload) => {
+      catalog = payload;
+      languageEl.replaceChildren();
+      for (const language of catalog.languages) {
+        const option = document.createElement("option");
+        option.value = language.id;
+        option.textContent = `${language.label} · ${language.count} voice${language.count === 1 ? "" : "s"}`;
+        languageEl.appendChild(option);
+      }
+      if (catalog.languages.length === 1) {
+        const only = catalog.languages[0];
+        hintEl.hidden = false;
+        hintEl.textContent = `These weights include ${only.label} only. English words inside a Vietnamese sentence are read aloud; this is not a separate English voice.`;
+      }
+      fillGenders();
+      fillVoices();
+    }).catch(() => setStatus("Could not load voices.", true));
+  </script>
+</body>
+</html>
