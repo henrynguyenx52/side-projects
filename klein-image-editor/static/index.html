@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Klein Edit</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Local image edit</p>
+        <h1>Klein Edit</h1>
+        <p class="lede">Describe the change, upload one photo or a batch, and edit them with FLUX.2 Klein 4B — 6-bit.</p>
+        <p id="status" role="status">Checking the local model…</p>
+      </header>
+
+      <form id="editor">
+        <label for="prompt">Edit instruction</label>
+        <textarea id="prompt" name="prompt" rows="4" maxlength="2000" required placeholder="Make the sky overcast and add a red coat"></textarea>
+
+        <div class="controls">
+          <label class="upload" for="image">Upload images</label>
+          <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" multiple required />
+          <div class="strength-field">
+            <label class="strength" for="strength">
+              Edit strength
+              <output id="strength-value">1.00</output>
+            </label>
+            <input id="strength" name="strength" type="range" min="0.05" max="1" step="0.05" value="1" />
+          </div>
+        </div>
+        <p id="filename"></p>
+
+        <div class="actions">
+          <button id="submit" type="submit">Edit image</button>
+          <button id="abort" type="button" class="abort" hidden>Abort</button>
+        </div>
+
+        <div id="progress" class="progress" hidden>
+          <div class="progress-meta">
+            <span id="phase">Starting…</span>
+            <span id="time-left"></span>
+          </div>
+          <div class="progress-track" role="progressbar" aria-label="Edit progress" aria-valuemin="0" aria-valuemax="100">
+            <span id="progress-bar"></span>
+          </div>
+        </div>
+        <p id="message" role="alert"></p>
+      </form>
+
+      <section id="preview" class="preview" aria-live="polite" hidden>
+        <div>
+          <h2>Original</h2>
+          <div id="sources" class="thumbs"></div>
+        </div>
+        <div id="edited-column" hidden>
+          <h2>Edited</h2>
+          <p id="folder" hidden></p>
+          <div id="results" class="thumbs"></div>
+        </div>
+      </section>
+    </main>
+    <script>
+      const form = document.querySelector("#editor");
+      const prompt = document.querySelector("#prompt");
+      const image = document.querySelector("#image");
+      const strength = document.querySelector("#strength");
+      const strengthValue = document.querySelector("#strength-value");
+      const status = document.querySelector("#status");
+      const filename = document.querySelector("#filename");
+      const message = document.querySelector("#message");
+      const submit = document.querySelector("#submit");
+      const abort = document.querySelector("#abort");
+      const progress = document.querySelector("#progress");
+      const phase = document.querySelector("#phase");
+      const timeLeft = document.querySelector("#time-left");
+      const progressBar = document.querySelector("#progress-bar");
+      const progressTrack = progress.querySelector(".progress-track");
+      const preview = document.querySelector("#preview");
+      const sources = document.querySelector("#sources");
+      const results = document.querySelector("#results");
+      const folder = document.querySelector("#folder");
+      const editedColumn = document.querySelector("#edited-column");
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      let ready = false;
+      let maxBatch = 30;
+      let currentJob = null;
+      let sourceUrls = [];
+
+      strength.addEventListener("input", () => {
+        strengthValue.textContent = Number(strength.value).toFixed(2);
+      });
+
+      function describeSelection(files) {
+        if (files.length === 0) return "";
+        if (files.length === 1) return files[0].name;
+        if (files.length <= 4) return `${files.length} images · ${files.map((file) => file.name).join(", ")}`;
+        const shown = files.slice(0, 3).map((file) => file.name).join(", ");
+        return `${files.length} images · ${shown}, and ${files.length - 3} more`;
+      }
+
+      function fillThumbs(container, entries) {
+        container.replaceChildren();
+        container.classList.toggle("single", entries.length === 1);
+        for (const entry of entries) {
+          const figure = document.createElement("figure");
+          const img = document.createElement("img");
+          img.src = entry.src;
+          img.alt = entry.alt;
+          const caption = document.createElement("figcaption");
+          caption.textContent = entry.caption;
+          caption.title = entry.caption;
+          figure.append(img, caption);
+          container.append(figure);
+        }
+        preview.hidden = sources.childElementCount === 0 && results.childElementCount === 0;
+        preview.classList.toggle("has-results", !editedColumn.hidden && results.childElementCount > 0);
+      }
+
+      function showSources(files) {
+        sourceUrls.forEach((url) => URL.revokeObjectURL(url));
+        sourceUrls = [];
+        fillThumbs(sources, files.map((file) => {
+          const url = URL.createObjectURL(file);
+          sourceUrls.push(url);
+          return { src: url, alt: file.name, caption: file.name };
+        }));
+      }
+
+      image.addEventListener("change", () => {
+        const files = [...image.files];
+        filename.textContent = describeSelection(files);
+        showSources(files);
+        if (!submit.disabled) setBusy(false);
+      });
+
+      async function refreshStatus() {
+        try {
+          const response = await fetch("/api/status");
+          const body = await response.json();
+          ready = body.model_ready && body.cli_ready;
+          if (body.max_batch) maxBatch = body.max_batch;
+          if (ready) {
+            status.textContent = `${body.model} is ready.`;
+          } else if (!body.cli_ready) {
+            status.textContent = "Install draw-things-cli to run the local model: brew install draw-things-cli";
+          } else {
+            status.textContent = `The ${body.model_file} model file was not found.`;
+          }
+        } catch (error) {
+          ready = false;
+          status.textContent = "The editor could not check the local model.";
+        }
+      }
+
+      function formatSeconds(seconds) {
+        const whole = Math.max(1, Math.ceil(seconds));
+        if (whole < 60) return `${whole}s`;
+        return `${Math.floor(whole / 60)}m ${String(whole % 60).padStart(2, "0")}s`;
+      }
+
+      function describePhase(job) {
+        const batch = job.image_count > 1;
+        const prefix = batch ? `Image ${job.image_index} of ${job.image_count} · ` : "";
+        if (job.status === "cancelling") {
+          return batch ? `Aborting image ${job.image_index} of ${job.image_count}…` : "Aborting…";
+        }
+        if (job.phase === "Sampling" && (job.image_step || job.step)) {
+          const step = job.image_step || job.step;
+          const total = job.image_steps || job.total_steps;
+          return `${prefix}Sampling step ${step} of ${total}`;
+        }
+        if (job.phase === "Starting" || job.phase === "Processing") return `${prefix}Loading model…`;
+        if (job.phase === "Finishing" || job.phase === "Generated") return `${prefix}Finishing…`;
+        return `${prefix}${job.phase}…`;
+      }
+
+      function showResults(job) {
+        const images = job.images || [{
+          image_url: job.image_url,
+          filename: "edited.png",
+          width: job.width,
+          height: job.height,
+          seed: job.seed,
+        }];
+        folder.hidden = !job.folder;
+        folder.textContent = job.folder ? `outputs/${job.folder}` : "";
+        editedColumn.hidden = false;
+        fillThumbs(results, images.map((item) => ({
+          src: `${item.image_url}?seed=${item.seed}`,
+          alt: item.source_name || item.filename || "Edited image",
+          caption: item.width ? `${item.filename} · ${item.width}×${item.height}` : item.filename,
+        })));
+      }
+
+      function describeResult(job) {
+        const count = job.images ? job.images.length : 1;
+        const where = job.folder ? ` Saved to outputs/${job.folder}.` : "";
+        let text = count > 1
+          ? `Edited ${count} images in ${formatSeconds(job.elapsed_seconds)}.${where}`
+          : `Edited at ${job.width}×${job.height} in ${formatSeconds(job.elapsed_seconds)}.${where}`;
+        if (job.failures && job.failures.length) {
+          text += ` Could not edit ${job.failures.map((item) => item.source_name).join(", ")}.`;
+        }
+        return text;
+      }
+
+      function showProgress(job) {
+        const percent = Math.round(job.progress * 100);
+        progress.hidden = false;
+        phase.textContent = describePhase(job);
+        timeLeft.textContent = job.remaining_seconds == null
+          ? `${formatSeconds(job.elapsed_seconds)} elapsed`
+          : `About ${formatSeconds(job.remaining_seconds)} left`;
+        progressBar.style.width = `${percent}%`;
+        progressTrack.setAttribute("aria-valuenow", String(percent));
+      }
+
+      function setBusy(busy) {
+        submit.disabled = busy;
+        const count = image.files.length;
+        submit.textContent = busy ? "Editing…" : (count > 1 ? "Edit images" : "Edit image");
+        image.disabled = busy;
+        prompt.disabled = busy;
+        strength.disabled = busy;
+        abort.hidden = !busy;
+        abort.disabled = false;
+        abort.textContent = "Abort";
+      }
+
+      async function watch(job) {
+        while (job.status === "running" || job.status === "cancelling") {
+          showProgress(job);
+          await sleep(1000);
+          const response = await fetch(`/api/jobs/${job.id}`);
+          job = await response.json();
+          if (!response.ok) throw new Error(job.detail || "Lost track of the edit.");
+        }
+        return job;
+      }
+
+      abort.addEventListener("click", async () => {
+        if (!currentJob) return;
+        abort.disabled = true;
+        abort.textContent = "Aborting…";
+        try {
+          await fetch(`/api/jobs/${currentJob}/cancel`, { method: "POST" });
+        } catch (error) {
+          abort.disabled = false;
+          abort.textContent = "Abort";
+          message.textContent = "Could not reach the server to abort.";
+        }
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        message.textContent = "";
+        if (!ready) {
+          message.textContent = status.textContent;
+          return;
+        }
+        if (image.files.length === 0) {
+          message.textContent = "Choose an image to edit.";
+          return;
+        }
+        if (image.files.length > maxBatch) {
+          message.textContent = `Upload at most ${maxBatch} images at a time.`;
+          return;
+        }
+        const body = new FormData(form);
+        results.replaceChildren();
+        folder.hidden = true;
+        folder.textContent = "";
+        editedColumn.hidden = true;
+        preview.classList.remove("has-results");
+        preview.hidden = sources.childElementCount === 0;
+        setBusy(true);
+        try {
+          const response = await fetch("/api/edit", { method: "POST", body });
+          let job = await response.json();
+          if (!response.ok) throw new Error(job.detail || "The edit failed.");
+          currentJob = job.id;
+          job = await watch(job);
+          if (job.status === "succeeded" || (job.status === "cancelled" && job.images && job.images.length)) {
+            showResults(job);
+          }
+          if (job.status === "succeeded") {
+            message.textContent = describeResult(job);
+          } else if (job.status === "cancelled") {
+            message.textContent = job.images && job.images.length
+              ? `Edit aborted. ${job.images.length} saved to outputs/${job.folder}.`
+              : "Edit aborted.";
+          } else {
+            message.textContent = job.error || "The edit failed.";
+          }
+        } catch (error) {
+          message.textContent = error.message;
+        } finally {
+          currentJob = null;
+          progress.hidden = true;
+          setBusy(false);
+          prompt.focus();
+        }
+      });
+
+      refreshStatus();
+    </script>
+  </body>
+</html>

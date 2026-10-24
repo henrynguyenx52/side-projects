@@ -1,0 +1,246 @@
+:root {
+  color: #1d1a16;
+  background: #f3efe6;
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+main {
+  width: min(920px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 48px 0 64px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #8a4b08;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 0.95;
+}
+
+.lede, #status, #filename, #message, figcaption {
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.lede {
+  max-width: 620px;
+  margin: 14px 0 0;
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+#status {
+  margin: 18px 0 0;
+  color: #5f584f;
+}
+
+form, .preview {
+  margin-top: 28px;
+  padding: 22px;
+  border: 1px solid #ddd4c4;
+  border-radius: 18px;
+  background: #fffaf3;
+}
+
+label, button, input, textarea {
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+label { display: block; font-weight: 700; }
+
+textarea, input[type="file"] {
+  width: 100%;
+  margin-top: 8px;
+}
+
+textarea {
+  padding: 12px;
+  border: 1px solid #cfc4b2;
+  border-radius: 12px;
+  resize: vertical;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) 1fr;
+  gap: 18px;
+  align-items: end;
+  margin-top: 18px;
+}
+
+.upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #1d1a16;
+  color: #fffaf3;
+  cursor: pointer;
+}
+
+#image {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.strength-field { min-width: 0; }
+
+.strength output {
+  margin-left: 8px;
+  color: #5f584f;
+  font-weight: 600;
+}
+
+input[type="range"] { width: 100%; margin: 12px 0 0; }
+
+#filename, #message { min-height: 1.2em; margin: 12px 0 0; color: #5f584f; }
+
+#message { color: #8d2f12; }
+
+button {
+  margin-top: 18px;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #0f6e56;
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled { cursor: wait; opacity: 0.7; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+button.abort {
+  background: transparent;
+  border: 1.5px solid #8d2f12;
+  color: #8d2f12;
+}
+
+button.abort:not(:disabled):hover { background: #8d2f12; color: white; }
+
+.progress { margin-top: 18px; font-family: "Avenir Next", "Segoe UI", sans-serif; }
+
+.progress-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  color: #5f584f;
+  font-size: 14px;
+}
+
+#time-left { font-weight: 700; color: #1d1a16; font-variant-numeric: tabular-nums; }
+
+.progress-track {
+  height: 8px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ebe2d2;
+}
+
+.progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: #0f6e56;
+  transition: width 0.9s linear;
+}
+
+.preview {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.preview.has-results { grid-template-columns: 1fr 1fr; }
+
+.preview h2 {
+  margin: 0 0 12px;
+  color: #8a4b08;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#folder {
+  margin: 0 0 12px;
+  color: #1d1a16;
+  font-family: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 12px;
+}
+
+.thumbs figure { min-width: 0; }
+
+.thumbs img {
+  min-height: 0;
+  aspect-ratio: 1;
+}
+
+.thumbs.single { grid-template-columns: 1fr; }
+
+.thumbs.single img {
+  aspect-ratio: auto;
+  min-height: 220px;
+  max-height: 480px;
+}
+
+.thumbs figcaption {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+figure { margin: 0; }
+
+img {
+  width: 100%;
+  min-height: 180px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #efe8db;
+}
+
+figcaption { margin-top: 8px; color: #5f584f; }
+
+@media (max-width: 700px) {
+  h1 { font-size: 42px; }
+  .controls, .preview, .preview.has-results { grid-template-columns: 1fr; }
+}

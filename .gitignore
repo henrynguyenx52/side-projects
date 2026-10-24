@@ -1,0 +1,36 @@
+# Secrets and local environments
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+
+# Generated media and weights. GitHub rejects files over 100MB.
+models/
+checkpoints/
+outputs/*
+!outputs/.gitkeep
+uploads/*
+!uploads/.gitkeep
+test-output/
+*.onnx
+*.wav
+*.mp4
+
+# JS
+node_modules/
+
+# OS and local tool files
+.DS_Store
+Thumbs.db
+.volcano.frt
