@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+models/
+uploads/
+outputs/
+.hf-cache/

@@ -1,0 +1,14 @@
+[project]
+name = "qwen-edit"
+version = "0.1.0"
+description = "Local editor for the Qwen-Image-2.1-Turbo 6-bit MLX checkpoint."
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.1",
+    "mflux>=0.22",
+    # Pillow 13 imports numbers._IntegralLike, which this Python 3.13 does not provide.
+    "pillow==12.3.0",
+]
+
+[tool.uv]
+package = false
