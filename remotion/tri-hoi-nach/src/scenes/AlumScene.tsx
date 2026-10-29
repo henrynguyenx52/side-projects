@@ -5,11 +5,15 @@ import {
   Pill,
   Stage,
   TipSheet,
+  ash,
   at,
-  cream,
+  hairline,
   ink,
-  lime,
+  radius,
   rise,
+  sage,
+  sagePale,
+  stone,
   type SceneProps,
 } from "../ui";
 
@@ -28,19 +32,18 @@ const Step = ({
         display: "flex",
         alignItems: "center",
         gap: 14,
-        marginTop: 10,
-        opacity: hot ? 1 : 0.4,
+        marginTop: 12,
       }}
     >
       <div
         style={{
-          width: 38,
-          height: 38,
-          borderRadius: 19,
-          background: hot ? lime : "rgba(246,241,231,0.16)",
-          color: hot ? ink : cream,
+          width: 40,
+          height: 40,
+          borderRadius: radius.full,
+          background: hot ? sage : sagePale,
+          color: hot ? ink : stone,
           fontSize: 20,
-          fontWeight: 800,
+          fontWeight: 600,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -49,7 +52,15 @@ const Step = ({
       >
         {n}
       </div>
-      <div style={{fontSize: 32, fontWeight: 700, color: cream}}>{label}</div>
+      <div
+        style={{
+          fontSize: 32,
+          fontWeight: hot ? 600 : 400,
+          color: hot ? ink : ash,
+        }}
+      >
+        {label}
+      </div>
     </div>
   );
 };
@@ -64,32 +75,25 @@ export const AlumScene = ({cueFrames, captions}: SceneProps) => {
       <Photo src="alum.jpg" frame={frame} from={1.04} to={1.1} origin="62% 68%" />
       <Stage anchor="start">
         <TipSheet>
-          <Pill bg={lime} color={ink} frame={frame}>
-            MẸO 1
-          </Pill>
+          <Pill frame={frame}>Mẹo 1</Pill>
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: 12,
               marginTop: 16,
+              fontSize: 40,
+              fontWeight: 400,
+              lineHeight: 1.25,
+              letterSpacing: 0,
+              color: ink,
               ...rise(frame, 4),
             }}
           >
-            <div
-              style={{
-                fontSize: 52,
-                fontWeight: 800,
-                lineHeight: 1.08,
-                letterSpacing: -0.8,
-                color: cream,
-              }}
-            >
-              Phèn chua có sẵn trong bếp
-            </div>
+            <div style={{flex: 1, minWidth: 0}}>Phèn chua có sẵn trong bếp</div>
             <div style={{fontSize: 44, lineHeight: 1}}>🧂</div>
           </div>
-          <div style={{marginTop: 16, ...rise(frame, 8)}}>
+          <div style={{marginTop: 8, ...rise(frame, 8)}}>
             <Step n="1" label="Rang chín" hot={frame >= grind} />
             <Step n="2" label="Giã mịn" hot={frame >= grind} />
             <Step n="3" label="Lau khô, thoa bột mỏng" hot={frame >= apply} />
@@ -97,16 +101,15 @@ export const AlumScene = ({cueFrames, captions}: SceneProps) => {
           <div
             style={{
               marginTop: 16,
-              paddingTop: 14,
-              borderTop: "1px solid rgba(246,241,231,0.18)",
+              paddingTop: 16,
+              borderTop: `1px solid ${hairline}`,
             }}
           >
             <LiveCaption
               frame={frame}
               captions={captions}
               cueFrames={cueFrames}
-              color={cream}
-              size={32}
+              color={ink}
             />
           </div>
         </TipSheet>

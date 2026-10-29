@@ -22,21 +22,21 @@ export const Captions = () => {
       style={{
         justifyContent: "flex-end",
         alignItems: "center",
-        padding: "0 96px 44px",
+        padding: "0 48px 340px",
       }}
     >
       <div
         style={{
           opacity,
-          maxWidth: 1580,
+          width: "100%",
           backgroundColor: ink,
           color: cream,
           fontFamily,
-          fontSize: 38,
+          fontSize: 34,
           fontWeight: 600,
           lineHeight: 1.35,
           textAlign: "center",
-          padding: "16px 36px",
+          padding: "16px 28px",
           borderRadius: 8,
         }}
       >

@@ -1,10 +1,46 @@
-import type {ReactNode} from "react";
+import type {CSSProperties, ReactNode} from "react";
 import {AbsoluteFill, Easing, Img, interpolate, staticFile} from "remotion";
-import {fontFamily} from "./fonts";
+import {
+  ash,
+  canvas,
+  espresso,
+  forest,
+  gold,
+  hairline,
+  highlight,
+  ink,
+  onDark,
+  onPrimary,
+  onStone,
+  primary,
+  radius,
+  sage,
+  sagePale,
+  space,
+  stone,
+  surface,
+  type,
+} from "../../design/oura";
+import {displayFamily, fontFamily} from "./fonts";
 
-export const ink = "#14110E";
-export const cream = "#F6F1E7";
-export const lime = "#D6F25A";
+export {
+  ash,
+  canvas,
+  espresso,
+  forest,
+  gold,
+  hairline,
+  highlight,
+  ink,
+  onDark,
+  onPrimary,
+  primary,
+  radius,
+  sage,
+  sagePale,
+  stone,
+  surface,
+};
 
 export type SceneProps = {
   cueFrames: number[];
@@ -46,7 +82,7 @@ export const Photo = ({
     easing: Easing.out(Easing.quad),
   });
   return (
-    <AbsoluteFill style={{overflow: "hidden", backgroundColor: ink}}>
+    <AbsoluteFill style={{overflow: "hidden", backgroundColor: espresso}}>
       <Img
         src={staticFile(src)}
         style={{
@@ -64,21 +100,25 @@ export const Photo = ({
 export const Shade = ({anchor}: {anchor: "top" | "bottom"}) => {
   const background =
     anchor === "bottom"
-      ? "linear-gradient(180deg, rgba(8,6,4,0) 34%, rgba(8,6,4,0.42) 58%, rgba(8,6,4,0.9) 80%, rgba(8,6,4,0.96) 100%)"
-      : "linear-gradient(180deg, rgba(8,6,4,0.92) 0%, rgba(8,6,4,0.72) 24%, rgba(8,6,4,0) 52%)";
+      ? "linear-gradient(180deg, rgba(28,27,26,0) 40%, rgba(28,27,26,0.55) 66%, rgba(28,27,26,0.9) 100%)"
+      : "linear-gradient(180deg, rgba(28,27,26,0.88) 0%, rgba(28,27,26,0.62) 22%, rgba(28,27,26,0) 50%)";
   return <AbsoluteFill style={{background}} />;
 };
 
+const pillTone = {
+  stone: {background: stone, color: onStone},
+  cream: {background: canvas, color: stone},
+  primary: {background: primary, color: onPrimary},
+} as const;
+
 export const Pill = ({
   children,
-  bg,
-  color,
+  tone = "stone",
   frame,
   start = 0,
 }: {
   children: ReactNode;
-  bg: string;
-  color: string;
+  tone?: keyof typeof pillTone;
   frame: number;
   start?: number;
 }) => {
@@ -86,13 +126,48 @@ export const Pill = ({
     <div
       style={{
         alignSelf: "flex-start",
-        background: bg,
+        ...pillTone[tone],
+        fontFamily,
+        fontWeight: type.eyebrow.fontWeight,
+        fontSize: type.eyebrow.fontSize,
+        letterSpacing: type.eyebrow.letterSpacing,
+        lineHeight: 1,
+        textTransform: "uppercase",
+        padding: "12px 18px",
+        borderRadius: radius.full,
+        ...rise(frame, start),
+      }}
+    >
+      {children}
+    </div>
+  );
+};
+
+export const Display = ({
+  children,
+  frame,
+  start = 0,
+  size = type.displaySm.fontSize,
+  color = ink,
+  style,
+}: {
+  children: ReactNode;
+  frame: number;
+  start?: number;
+  size?: number;
+  color?: string;
+  style?: CSSProperties;
+}) => {
+  return (
+    <div
+      style={{
+        fontFamily: displayFamily,
+        fontSize: size,
+        fontWeight: type.display.fontWeight,
+        lineHeight: type.displaySm.lineHeight,
+        letterSpacing: 0,
         color,
-        fontWeight: 800,
-        fontSize: 26,
-        letterSpacing: 0.8,
-        padding: "10px 16px",
-        borderRadius: 999,
+        ...style,
         ...rise(frame, start),
       }}
     >
@@ -108,13 +183,13 @@ export const TipSheet = ({children}: {children: ReactNode}) => {
         display: "flex",
         flexDirection: "column",
         alignItems: "stretch",
-        width: "100%",
+        width: "auto",
+        margin: space.lg,
         boxSizing: "border-box",
-        background: "rgba(14,12,10,0.94)",
-        borderBottomLeftRadius: 36,
-        borderBottomRightRadius: 36,
-        padding: "52px 48px 28px",
-        boxShadow: "0 18px 44px rgba(0,0,0,0.28)",
+        background: canvas,
+        borderRadius: radius.lg,
+        padding: `${space.xl + 4}px ${space.xl}px ${space.lg}px`,
+        boxShadow: "0 10px 28px rgba(28, 27, 26, 0.08)",
       }}
     >
       {children}
@@ -127,7 +202,7 @@ export const LiveCaption = ({
   captions,
   cueFrames,
   color,
-  size = 34,
+  size = type.caption.fontSize,
 }: {
   frame: number;
   captions: string[];
@@ -156,12 +231,14 @@ export const LiveCaption = ({
   return (
     <div
       style={{
-        marginTop: 14,
+        marginTop: space.sm,
         opacity,
         color,
+        fontFamily,
         fontSize: size,
-        fontWeight: 600,
-        lineHeight: 1.35,
+        fontWeight: type.caption.fontWeight,
+        lineHeight: type.caption.lineHeight,
+        letterSpacing: 0,
       }}
     >
       {captions[safeIndex]}

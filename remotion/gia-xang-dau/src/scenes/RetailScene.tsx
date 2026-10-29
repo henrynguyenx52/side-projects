@@ -77,7 +77,14 @@ export const RetailScene = ({cueFrames}: SceneProps) => {
           so với giá trần, mỗi lít
         </div>
       </div>
-      <div style={{display: "flex", gap: 48, marginTop: 42}}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 28,
+          marginTop: 42,
+        }}
+      >
         <Price
           frame={frame}
           start={at(cueFrames, 1)}

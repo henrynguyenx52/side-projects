@@ -32,30 +32,37 @@ const Row = ({
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "1.3fr 1fr 220px",
-        alignItems: "end",
         borderTop: `2px solid ${ink}`,
-        padding: "26px 0",
+        padding: "22px 0",
         ...rise(frame, start),
       }}
     >
-      <div style={{fontSize: 42, fontWeight: 700, color: ink}}>{name}</div>
-      <div>
-        <div style={{fontSize: 56, fontWeight: 800, lineHeight: 1, color: ink}}>
-          {price}
-        </div>
-        <div style={{marginTop: 6, fontSize: 26, color: muted}}>{unit}</div>
-      </div>
+      <div style={{fontSize: 36, fontWeight: 700, color: ink}}>{name}</div>
       <div
         style={{
-          fontSize: 48,
-          fontWeight: 800,
-          color: deltaColor,
-          textAlign: "right",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          marginTop: 10,
+          gap: 16,
         }}
       >
-        {delta}
+        <div>
+          <div style={{fontSize: 56, fontWeight: 800, lineHeight: 1, color: ink}}>
+            {price}
+          </div>
+          <div style={{marginTop: 6, fontSize: 24, color: muted}}>{unit}</div>
+        </div>
+        <div
+          style={{
+            fontSize: 44,
+            fontWeight: 800,
+            color: deltaColor,
+            textAlign: "right",
+          }}
+        >
+          {delta}
+        </div>
       </div>
     </div>
   );

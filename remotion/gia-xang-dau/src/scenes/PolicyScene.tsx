@@ -47,8 +47,8 @@ export const PolicyScene = ({cueFrames}: SceneProps) => {
       <div
         style={{
           display: "flex",
-          alignItems: "baseline",
-          gap: 28,
+          flexDirection: "column",
+          gap: 8,
           marginTop: 28,
         }}
       >
@@ -78,7 +78,7 @@ export const PolicyScene = ({cueFrames}: SceneProps) => {
             ...rise(frame, at(cueFrames, 1)),
           }}
         >
-          →
+          ↓
         </div>
         <div style={{...rise(frame, at(cueFrames, 1))}}>
           <div style={{fontSize: 28, fontWeight: 600, color: muted}}>

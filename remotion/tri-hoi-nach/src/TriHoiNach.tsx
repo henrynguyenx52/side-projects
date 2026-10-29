@@ -7,7 +7,7 @@ import {CitrusScene} from "./scenes/CitrusScene";
 import {CtaScene} from "./scenes/CtaScene";
 import {HookScene} from "./scenes/HookScene";
 import {audioFile, cues, scenes, type SceneId} from "./timeline";
-import {SceneProps, ink, lime} from "./ui";
+import {canvas, sage, type SceneProps} from "./ui";
 
 const sceneComponent: Record<SceneId, FC<SceneProps>> = {
   hook: HookScene,
@@ -43,7 +43,7 @@ const Progress = () => {
               flex: 1,
               height: 6,
               borderRadius: 99,
-              background: "rgba(255,255,255,0.32)",
+              background: "rgba(247,241,232,0.45)",
               overflow: "hidden",
             }}
           >
@@ -51,7 +51,7 @@ const Progress = () => {
               style={{
                 width: `${filled * 100}%`,
                 height: "100%",
-                background: lime,
+                background: sage,
                 borderRadius: 99,
               }}
             />
@@ -64,7 +64,7 @@ const Progress = () => {
 
 export const TriHoiNach = () => {
   return (
-    <AbsoluteFill style={{backgroundColor: ink}}>
+    <AbsoluteFill style={{backgroundColor: canvas}}>
       <Audio src={staticFile(audioFile)} />
       {scenes.map((scene) => {
         const SceneView = sceneComponent[scene.id];

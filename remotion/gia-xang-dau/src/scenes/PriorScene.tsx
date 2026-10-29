@@ -25,7 +25,6 @@ const Group = ({
   return (
     <div
       style={{
-        flex: 1,
         borderTop: "2px solid rgba(243,238,228,0.35)",
         paddingTop: 24,
         ...rise(frame, start),
@@ -49,7 +48,7 @@ const Group = ({
           fontWeight: 600,
           lineHeight: 1.35,
           color: cream,
-          maxWidth: 640,
+          maxWidth: 860,
         }}
       >
         {names}
@@ -76,7 +75,14 @@ export const PriorScene = ({cueFrames}: SceneProps) => {
       >
         Bán thấp hơn giá cơ sở 300–350 đồng mỗi lít, mỗi kilôgam.
       </div>
-      <div style={{display: "flex", gap: 64, marginTop: 48}}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 36,
+          marginTop: 48,
+        }}
+      >
         <Group
           frame={frame}
           start={at(cueFrames, 2)}

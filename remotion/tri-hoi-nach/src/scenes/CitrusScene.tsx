@@ -1,14 +1,19 @@
 import {AbsoluteFill, useCurrentFrame} from "remotion";
 import {
+  Display,
   LiveCaption,
   Photo,
   Pill,
   Stage,
   TipSheet,
-  cream,
+  forest,
+  gold,
+  hairline,
+  highlight,
   ink,
-  lime,
+  radius,
   rise,
+  surface,
   type SceneProps,
 } from "../ui";
 
@@ -25,16 +30,17 @@ const Tile = ({
     <div
       style={{
         flex: 1,
-        background: cream,
-        borderRadius: 18,
+        background: surface,
+        borderRadius: radius.lg,
+        border: `1px solid ${hairline}`,
         padding: "16px 16px 14px",
       }}
     >
       <div
         style={{
           fontSize: 30,
-          fontWeight: 800,
-          lineHeight: 1.15,
+          fontWeight: 400,
+          lineHeight: 1.2,
           color: ink,
         }}
       >
@@ -42,9 +48,10 @@ const Tile = ({
       </div>
       <div
         style={{
-          marginTop: 4,
+          marginTop: 6,
           fontSize: 24,
-          fontWeight: 700,
+          fontWeight: 400,
+          lineHeight: 1.3,
           color: noteColor,
         }}
       >
@@ -68,28 +75,16 @@ export const CitrusScene = ({cueFrames, captions}: SceneProps) => {
       />
       <Stage anchor="start">
         <TipSheet>
-          <Pill bg={lime} color={ink} frame={frame}>
-            MẸO 2
-          </Pill>
-          <div
-            style={{
-              marginTop: 14,
-              fontSize: 64,
-              fontWeight: 800,
-              lineHeight: 1.04,
-              letterSpacing: -1.2,
-              color: cream,
-              ...rise(frame, 4),
-            }}
-          >
+          <Pill frame={frame}>Mẹo 2</Pill>
+          <Display frame={frame} start={4} color={ink} style={{marginTop: 14}}>
             Chanh / Gừng 🍋
-          </div>
+          </Display>
           <div
             style={{
-              marginTop: 6,
-              fontSize: 34,
-              fontWeight: 700,
-              color: lime,
+              marginTop: 8,
+              fontSize: 32,
+              fontWeight: 400,
+              color: highlight.smell.text,
               ...rise(frame, 8),
             }}
           >
@@ -103,15 +98,15 @@ export const CitrusScene = ({cueFrames, captions}: SceneProps) => {
               ...rise(frame, 10),
             }}
           >
-            <Tile title="Chanh" note="Cắt nửa quả, chà nhẹ" noteColor="#2F6A34" />
-            <Tile title="Gừng" note="Có sẵn trong tủ lạnh" noteColor="#8A5A12" />
+            <Tile title="Chanh" note="Cắt nửa quả, chà nhẹ" noteColor={forest} />
+            <Tile title="Gừng" note="Có sẵn trong tủ lạnh" noteColor={gold} />
           </div>
           <div
             style={{
-              marginTop: 14,
+              marginTop: 16,
               fontSize: 30,
-              fontWeight: 800,
-              color: cream,
+              fontWeight: 600,
+              color: ink,
               ...rise(frame, 12),
             }}
           >
@@ -119,17 +114,16 @@ export const CitrusScene = ({cueFrames, captions}: SceneProps) => {
           </div>
           <div
             style={{
-              marginTop: 14,
-              paddingTop: 14,
-              borderTop: "1px solid rgba(246,241,231,0.18)",
+              marginTop: 16,
+              paddingTop: 16,
+              borderTop: `1px solid ${hairline}`,
             }}
           >
             <LiveCaption
               frame={frame}
               captions={captions}
               cueFrames={cueFrames}
-              color={cream}
-              size={32}
+              color={ink}
             />
           </div>
         </TipSheet>

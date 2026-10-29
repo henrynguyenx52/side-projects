@@ -1,13 +1,15 @@
 import {AbsoluteFill, useCurrentFrame} from "remotion";
+import {type as typeScale} from "../../../design/oura";
 import {
+  Display,
   LiveCaption,
   Photo,
   Pill,
   Shade,
   Stage,
-  cream,
-  ink,
-  lime,
+  highlight,
+  onDark,
+  radius,
   rise,
   type SceneProps,
 } from "../ui";
@@ -29,23 +31,18 @@ export const HookScene = ({cueFrames, captions}: SceneProps) => {
             padding: "0 56px 52px",
           }}
         >
-          <Pill bg={cream} color={ink} frame={frame}>
-            SỰ THẬT
+          <Pill tone="cream" frame={frame}>
+            Sự thật
           </Pill>
-          <div
-            style={{
-              marginTop: 18,
-              fontSize: 108,
-              fontWeight: 800,
-              lineHeight: 1.02,
-              letterSpacing: -2,
-              color: cream,
-              textShadow: "0 8px 28px rgba(0,0,0,0.45)",
-              ...rise(frame, 4),
-            }}
+          <Display
+            frame={frame}
+            start={4}
+            size={typeScale.display.fontSize}
+            color={onDark}
+            style={{marginTop: 18, lineHeight: typeScale.display.lineHeight}}
           >
-            MỒ HÔI
-          </div>
+            Mồ hôi
+          </Display>
           <div
             style={{
               display: "flex",
@@ -58,28 +55,26 @@ export const HookScene = ({cueFrames, captions}: SceneProps) => {
           >
             <div
               style={{
-                background: lime,
-                color: ink,
-                fontSize: 52,
-                fontWeight: 800,
+                background: highlight.smell.band,
+                color: highlight.smell.ink,
+                fontSize: 44,
+                fontWeight: 600,
                 lineHeight: 1.15,
-                letterSpacing: -0.6,
-                padding: "8px 16px 12px",
-                borderRadius: 14,
-                boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
-                transform: "rotate(-1.1deg)",
+                letterSpacing: 0,
+                padding: "10px 18px",
+                borderRadius: radius.lg,
               }}
             >
-              KHÔNG CÓ MÙI?!
+              Không có mùi?!
             </div>
             <div style={{fontSize: 64, lineHeight: 1}}>😱</div>
           </div>
-          <div style={{maxWidth: 920, textShadow: "0 2px 16px rgba(0,0,0,0.55)"}}>
+          <div style={{maxWidth: 920}}>
             <LiveCaption
               frame={frame}
               captions={captions}
               cueFrames={cueFrames}
-              color={cream}
+              color={onDark}
             />
           </div>
         </div>

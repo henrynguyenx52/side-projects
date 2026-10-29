@@ -43,7 +43,7 @@ export const FundScene = ({cueFrames}: SceneProps) => {
           fontSize: 44,
           fontWeight: 700,
           color: mist,
-          maxWidth: 1100,
+          maxWidth: "100%",
           ...rise(frame, at(cueFrames, 1)),
         }}
       >

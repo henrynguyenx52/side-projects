@@ -13,8 +13,7 @@ export const SourceScene = ({cueFrames}: SceneProps) => {
       <div
         style={{
           marginTop: 28,
-          maxWidth: 1400,
-          fontSize: 72,
+          fontSize: 64,
           fontWeight: 800,
           lineHeight: 1.15,
           color: cream,

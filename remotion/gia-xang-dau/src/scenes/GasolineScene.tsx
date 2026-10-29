@@ -26,7 +26,7 @@ const Column = ({
   delta: string;
 }) => {
   return (
-    <div style={{flex: 1, ...rise(frame, start)}}>
+    <div style={{...rise(frame, start)}}>
       <div style={{fontSize: 36, fontWeight: 600, color: red}}>{name}</div>
       <div
         style={{
@@ -64,7 +64,14 @@ export const GasolineScene = ({cueFrames}: SceneProps) => {
       <Kicker color={red} frame={frame}>
         Giá trần mới
       </Kicker>
-      <div style={{display: "flex", gap: 72, marginTop: 48, flex: 1}}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 40,
+          marginTop: 56,
+        }}
+      >
         <Column
           frame={frame}
           start={at(cueFrames, 0)}
@@ -72,7 +79,7 @@ export const GasolineScene = ({cueFrames}: SceneProps) => {
           price="25.210"
           delta="−1.810"
         />
-        <div style={{width: 2, backgroundColor: ink, opacity: 0.15}} />
+        <div style={{height: 2, backgroundColor: ink, opacity: 0.15}} />
         <Column
           frame={frame}
           start={at(cueFrames, 1)}

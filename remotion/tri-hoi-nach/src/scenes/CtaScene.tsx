@@ -1,14 +1,17 @@
 import {AbsoluteFill, spring, useCurrentFrame, useVideoConfig} from "remotion";
 import {
+  Display,
   LiveCaption,
   Photo,
   Pill,
   Shade,
   Stage,
   at,
-  cream,
-  ink,
-  lime,
+  highlight,
+  onDark,
+  onPrimary,
+  primary,
+  radius,
   rise,
   type SceneProps,
 } from "../ui";
@@ -43,31 +46,25 @@ export const CtaScene = ({cueFrames, captions}: SceneProps) => {
             padding: "0 60px 48px",
           }}
         >
-          <Pill bg={cream} color={ink} frame={frame}>
-            MỖI NGÀY
+          <Pill tone="cream" frame={frame}>
+            Mỗi ngày
           </Pill>
-          <div
-            style={{
-              marginTop: 14,
-              fontSize: 84,
-              fontWeight: 800,
-              lineHeight: 1.02,
-              letterSpacing: -1.6,
-              color: cream,
-              textShadow: "0 8px 28px rgba(0,0,0,0.45)",
-              ...rise(frame, 4),
-            }}
+          <Display
+            frame={frame}
+            start={4}
+            size={84}
+            color={onDark}
+            style={{marginTop: 14}}
           >
             Tiết kiệm
-          </div>
+          </Display>
           <div
             style={{
-              marginTop: 4,
-              fontSize: 48,
-              fontWeight: 800,
-              lineHeight: 1.15,
-              color: lime,
-              textShadow: "0 6px 20px rgba(0,0,0,0.4)",
+              marginTop: 8,
+              fontSize: 40,
+              fontWeight: 400,
+              lineHeight: 1.2,
+              color: highlight.smell.band,
               ...rise(frame, 8),
             }}
           >
@@ -76,25 +73,25 @@ export const CtaScene = ({cueFrames, captions}: SceneProps) => {
           <div
             style={{
               marginTop: 22,
-              background: lime,
-              color: ink,
-              fontWeight: 800,
-              fontSize: 34,
+              background: primary,
+              color: onPrimary,
+              fontWeight: 600,
+              fontSize: 28,
               lineHeight: 1,
-              padding: "18px 28px",
-              borderRadius: 999,
+              padding: "16px 28px",
+              borderRadius: radius.full,
               opacity: pop,
-              transform: `scale(${0.9 + pop * 0.1})`,
+              transform: `scale(${0.92 + pop * 0.08})`,
             }}
           >
             Lưu video này
           </div>
-          <div style={{maxWidth: 900, textShadow: "0 2px 14px rgba(0,0,0,0.55)"}}>
+          <div style={{maxWidth: 900}}>
             <LiveCaption
               frame={frame}
               captions={captions}
               cueFrames={cueFrames}
-              color={cream}
+              color={onDark}
             />
           </div>
         </div>

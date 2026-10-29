@@ -42,7 +42,7 @@ export const Stage: React.FC<{
         style={{
           position: "absolute",
           inset: 0,
-          padding: "84px 120px 196px",
+          padding: "96px 64px 500px",
           display: "flex",
           flexDirection: "column",
         }}

@@ -1,13 +1,14 @@
 import {AbsoluteFill, useCurrentFrame} from "remotion";
 import {
+  Display,
   LiveCaption,
   Photo,
   Pill,
   Stage,
   TipSheet,
-  cream,
+  hairline,
+  highlight,
   ink,
-  lime,
   rise,
   type SceneProps,
 } from "../ui";
@@ -26,28 +27,16 @@ export const BridgeScene = ({cueFrames, captions}: SceneProps) => {
       />
       <Stage anchor="start">
         <TipSheet>
-          <Pill bg={lime} color={ink} frame={frame}>
-            TẠI NHÀ
-          </Pill>
-          <div
-            style={{
-              marginTop: 12,
-              fontSize: 64,
-              fontWeight: 800,
-              lineHeight: 1.05,
-              letterSpacing: -1.2,
-              color: cream,
-              ...rise(frame, 4),
-            }}
-          >
+          <Pill frame={frame}>Tại nhà</Pill>
+          <Display frame={frame} start={4} color={ink} style={{marginTop: 12}}>
             Mẹo tự nhiên 🌿
-          </div>
+          </Display>
           <div
             style={{
-              marginTop: 6,
-              fontSize: 36,
-              fontWeight: 700,
-              color: lime,
+              marginTop: 8,
+              fontSize: 32,
+              fontWeight: 400,
+              color: highlight.smell.text,
               ...rise(frame, 8),
             }}
           >
@@ -55,17 +44,16 @@ export const BridgeScene = ({cueFrames, captions}: SceneProps) => {
           </div>
           <div
             style={{
-              marginTop: 14,
-              paddingTop: 14,
-              borderTop: "1px solid rgba(246,241,231,0.18)",
+              marginTop: 16,
+              paddingTop: 16,
+              borderTop: `1px solid ${hairline}`,
             }}
           >
             <LiveCaption
               frame={frame}
               captions={captions}
               cueFrames={cueFrames}
-              color={cream}
-              size={32}
+              color={ink}
             />
           </div>
         </TipSheet>

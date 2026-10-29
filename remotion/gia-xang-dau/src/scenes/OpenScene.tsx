@@ -33,7 +33,7 @@ export const OpenScene = ({cueFrames}: SceneProps) => {
       <div
         style={{
           marginTop: 8,
-          fontSize: 168,
+          fontSize: 128,
           fontWeight: 800,
           lineHeight: 0.92,
           color: cream,

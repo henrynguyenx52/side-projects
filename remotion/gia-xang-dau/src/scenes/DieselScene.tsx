@@ -40,14 +40,14 @@ const Row = ({
     >
       <div>
         <div style={{fontSize: 28, fontWeight: 600, color: gold}}>{delta}</div>
-        <div style={{marginTop: 8, fontSize: 52, fontWeight: 700, color: cream}}>
+        <div style={{marginTop: 8, fontSize: 44, fontWeight: 700, color: cream}}>
           {name}
         </div>
       </div>
       <div style={{textAlign: "right"}}>
         <div
           style={{
-            fontSize: 92,
+            fontSize: 76,
             fontWeight: 800,
             lineHeight: 0.9,
             color: upOnDark,
