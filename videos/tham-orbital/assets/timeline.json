@@ -1,0 +1,135 @@
+{
+  "voice": "quangminh",
+  "fps": 30,
+  "duration": 22.552,
+  "scenes": [
+    {
+      "id": "orbit",
+      "start": 0,
+      "end": 2.198,
+      "duration": 2.198
+    },
+    {
+      "id": "loop",
+      "start": 2.198,
+      "end": 9.269,
+      "duration": 7.071
+    },
+    {
+      "id": "contrast",
+      "start": 9.269,
+      "end": 12.693,
+      "duration": 3.424
+    },
+    {
+      "id": "undo",
+      "start": 12.693,
+      "end": 18.568,
+      "duration": 5.875
+    },
+    {
+      "id": "close",
+      "start": 18.568,
+      "end": 22.552,
+      "duration": 3.984
+    }
+  ],
+  "cues": [
+    {
+      "id": "01",
+      "scene": "orbit",
+      "text": "Thâm nách là vòng, không phải vết bẩn.",
+      "hot": "vòng",
+      "start": 0.25,
+      "end": 1.878
+    },
+    {
+      "id": "02",
+      "scene": "loop",
+      "text": "70 đến 80% bắt đầu từ cọ và cạo.",
+      "hot": "80%",
+      "start": 2.198,
+      "end": 4.907
+    },
+    {
+      "id": "03",
+      "scene": "loop",
+      "text": "Cọ xong thì da viêm.",
+      "hot": "viêm",
+      "start": 5.047,
+      "end": 6.223
+    },
+    {
+      "id": "04",
+      "scene": "loop",
+      "text": "Viêm xong thì da đậm.",
+      "hot": "đậm",
+      "start": 6.363,
+      "end": 7.371
+    },
+    {
+      "id": "05",
+      "scene": "loop",
+      "text": "Khuỷu chống bàn cũng là nhát cọ.",
+      "hot": "cọ",
+      "start": 7.511,
+      "end": 8.949
+    },
+    {
+      "id": "06",
+      "scene": "contrast",
+      "text": "Chanh và soda không mở được vòng.",
+      "hot": "vòng",
+      "start": 9.269,
+      "end": 10.892
+    },
+    {
+      "id": "07",
+      "scene": "contrast",
+      "text": "Chúng chỉ thêm một nhát cọ nữa.",
+      "hot": "cọ",
+      "start": 11.032,
+      "end": 12.373
+    },
+    {
+      "id": "08",
+      "scene": "undo",
+      "text": "Bớt cọ: áo thoáng, cạo thưa hơn.",
+      "hot": "thoáng",
+      "start": 12.693,
+      "end": 14.496
+    },
+    {
+      "id": "09",
+      "scene": "undo",
+      "text": "Dịu viêm: rửa nhẹ, rồi thấm khô.",
+      "hot": "Dịu",
+      "start": 14.636,
+      "end": 16.52
+    },
+    {
+      "id": "10",
+      "scene": "undo",
+      "text": "Giữ da: dưỡng và chống nắng.",
+      "hot": "dưỡng",
+      "start": 16.66,
+      "end": 18.248
+    },
+    {
+      "id": "11",
+      "scene": "close",
+      "text": "Vòng dừng khi da được để yên.",
+      "hot": "dừng",
+      "start": 18.568,
+      "end": 20.007
+    },
+    {
+      "id": "12",
+      "scene": "close",
+      "text": "Dày, mịn như nhung thì đi khám.",
+      "hot": "khám",
+      "start": 20.147,
+      "end": 21.852
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+---
+description: Spoken video always uses local ZeroTTS. Never use Edge TTS.
+alwaysApply: true
+---
+
+# Voice
+
+Every spoken video uses local ZeroTTS at `text-to-voice/models/ZeroTTS`. Run it with `PYTHONPATH=text-to-voice/src` and `text-to-voice/.venv/bin/python`.
+
+Do not use Edge TTS, `edge-tts`, or the macOS `say` voice.
+
+Vietnamese shorts use the ZeroTTS voice `quangminh` and the skill `vietnamese-moneyprinter-short`. An English short still uses ZeroTTS. Pick its voice only when that skill is written. Do not reuse `quangminh` for English.

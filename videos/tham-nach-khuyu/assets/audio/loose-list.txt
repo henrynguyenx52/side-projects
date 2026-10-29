@@ -1,0 +1,5 @@
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/loose-0.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/loose-1.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/loose-2.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/loose-3.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/loose-4.wav'

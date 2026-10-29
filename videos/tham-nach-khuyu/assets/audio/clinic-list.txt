@@ -1,0 +1,3 @@
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/clinic-0.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/clinic-1.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/clinic-2.wav'

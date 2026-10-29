@@ -1,0 +1,4 @@
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/close-0.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/close-1.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/close-2.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/close-3.wav'

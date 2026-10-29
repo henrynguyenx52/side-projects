@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="vi" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #f6f3ec; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="111.696" data-width="1080" data-height="1920">
+      <div
+        id="hook"
+        data-composition-id="hook"
+        data-composition-src="compositions/hook.html"
+        data-start="0.000"
+        data-duration="8.176"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+        style="z-index: 1"
+      ></div>
+      <div
+        id="cause"
+        data-composition-id="cause"
+        data-composition-src="compositions/cause.html"
+        data-start="8.176"
+        data-duration="12.736"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+        style="z-index: 1"
+      ></div>
+      <div
+        id="armpit"
+        data-composition-id="armpit"
+        data-composition-src="compositions/armpit.html"
+        data-start="20.912"
+        data-duration="13.840"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+        style="z-index: 1"
+      ></div>
+      <div
+        id="elbow"
+        data-composition-id="elbow"
+        data-composition-src="compositions/elbow.html"
+        data-start="34.752"
+        data-duration="12.496"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+        style="z-index: 1"
+      ></div>
+      <div
+        id="avoid"
+        data-composition-id="avoid"
+        data-composition-src="compositions/avoid.html"
+        data-start="47.248"
+        data-duration="12.088"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+        style="z-index: 1"
+      ></div>
+      <div
+        id="loose"
+        data-composition-id="loose"
+        data-composition-src="compositions/loose.html"
+        data-start="59.336"
+        data-duration="15.664"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+        style="z-index: 1"
+      ></div>
+      <div
+        id="soften"
+        data-composition-id="soften"
+        data-composition-src="compositions/soften.html"
+        data-start="75.000"
+        data-duration="12.136"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+        style="z-index: 1"
+      ></div>
+      <div
+        id="clinic"
+        data-composition-id="clinic"
+        data-composition-src="compositions/clinic.html"
+        data-start="87.136"
+        data-duration="12.592"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+        style="z-index: 1"
+      ></div>
+      <div
+        id="close"
+        data-composition-id="close"
+        data-composition-src="compositions/close.html"
+        data-start="99.728"
+        data-duration="11.968"
+        data-track-index="1"
+        data-track-kind="graphics"
+        data-width="1080"
+        data-height="1920"
+        style="z-index: 1"
+      ></div>
+      <div
+        id="captions"
+        data-composition-id="captions"
+        data-composition-src="compositions/captions.html"
+        data-start="0"
+        data-duration="111.696"
+        data-track-index="3"
+        data-track-kind="captions"
+        data-width="1080"
+        data-height="1920"
+        style="z-index: 4"
+      ></div>
+      <audio id="voiceover" src="assets/narration.wav" data-start="0" data-duration="111.696" data-track-index="2" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

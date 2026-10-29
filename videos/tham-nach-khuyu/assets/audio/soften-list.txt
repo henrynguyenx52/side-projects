@@ -1,0 +1,3 @@
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/soften-0.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/soften-1.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/soften-2.wav'

@@ -1,14 +1,7 @@
-import {loadFont as loadSans} from "@remotion/google-fonts/BeVietnamPro";
-import {loadFont as loadDisplay} from "@remotion/google-fonts/Newsreader";
+import {loadFont} from "@remotion/google-fonts/BeVietnamPro";
 
-/** Akkurat substitute. Covers Vietnamese. */
-export const {fontFamily} = loadSans("normal", {
-  weights: ["400", "600", "700"],
-  subsets: ["latin", "vietnamese"],
-});
-
-/** Editorial New substitute. Thin serif for display lines only. */
-export const {fontFamily: displayFamily} = loadDisplay("normal", {
-  weights: ["300", "400"],
+/** Clean Vietnamese sans for titles, sketches labels, and captions. */
+export const {fontFamily} = loadFont("normal", {
+  weights: ["500", "600", "700"],
   subsets: ["latin", "vietnamese"],
 });

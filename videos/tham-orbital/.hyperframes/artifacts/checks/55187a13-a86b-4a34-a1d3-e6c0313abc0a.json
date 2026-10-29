@@ -1,0 +1,171 @@
+{
+  "ok": true,
+  "strict": false,
+  "browserSkipped": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 3,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"progress\"> is a timeline element that contains nested <div id=\"progress-fill\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#progress",
+        "dataAttributes": {},
+        "sourceFile": "/Users/hungnguyen/Documents/side-projects/videos/tham-orbital/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"progress\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "timeline_track_too_dense",
+        "severity": "warning",
+        "message": "Track 0 has 11 timed elements in this HTML file. Smaller sub-compositions keep timelines easier to read, iterate on, and diff.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "/Users/hungnguyen/Documents/side-projects/videos/tham-orbital/compositions/captions.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move coherent scene groups into smaller .html files and mount them from the parent with data-composition-src so the timeline stays easier to inspect, revise, and validate."
+      },
+      {
+        "code": "gsap_timeline_set_initial_hide",
+        "severity": "warning",
+        "message": "Initial hidden state for \"#close-ring\" is set via tl.set(...) at position 0 inside the paused timeline. A zero-duration set at 0 does not render while the playhead sits exactly at 0, so frame 0 shows the un-hidden state.",
+        "selector": "#close-ring",
+        "dataAttributes": {},
+        "sourceFile": "/Users/hungnguyen/Documents/side-projects/videos/tham-orbital/compositions/close.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Use gsap.set(...) (immediate, outside the timeline) for initial states, or author the hidden state directly in CSS/attributes."
+      }
+    ],
+    "filesScanned": 7
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "duration": 21.594,
+    "samples": [
+      1.2,
+      3.599,
+      5.998,
+      8.398,
+      10.797,
+      13.196,
+      15.596,
+      17.995,
+      20.394
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 0,
+    "truncated": false
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": false,
+    "samples": 0
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "samples": [
+      1.2,
+      5.998,
+      10.797,
+      15.596,
+      20.394
+    ],
+    "checked": 51,
+    "passed": 51
+  },
+  "craft": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 1,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and \"MẸO HAY GẶP\" renders at 22 px for 2.00 s: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "MẸO HAY GẶP",
+        "selector": "#orbit > div:nth-of-type(1) > div:nth-of-type(6)",
+        "dataAttributes": {},
+        "sourceFile": "compositions/orbit.html",
+        "bbox": {
+          "x": 450.78,
+          "y": 560,
+          "width": 178.42,
+          "height": 28
+        },
+        "time": 0,
+        "times": [
+          0
+        ],
+        "fontPx": 22,
+        "floorPx": 28,
+        "seconds": 1.997,
+        "elements": [
+          {
+            "selector": "#orbit > div:nth-of-type(1) > div:nth-of-type(6)",
+            "text": "MẸO HAY GẶP",
+            "fontPx": 22,
+            "time": 0,
+            "seconds": 1.997
+          }
+        ]
+      }
+    ],
+    "enabled": true,
+    "step": 0.125,
+    "samples": 173
+  },
+  "hdr": {
+    "autoPromotion": null,
+    "inspection": "available"
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  }
+}

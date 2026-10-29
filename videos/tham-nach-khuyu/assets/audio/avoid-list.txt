@@ -1,0 +1,3 @@
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/avoid-0.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/avoid-1.wav'
+file '/Users/hungnguyen/Documents/side-projects/videos/tham-nach-khuyu/assets/audio/avoid-2.wav'
