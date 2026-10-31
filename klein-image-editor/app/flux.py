@@ -20,6 +20,8 @@ DEFAULT_STRENGTH = 1.0
 DEFAULT_STEPS = 4
 DEFAULT_CFG = 1.0
 MODEL_GRID = 64
+# Primary edit image + up to this many extra references (Klein supports 4 total).
+MAX_REFERENCE_IMAGES = 3
 ALLOWED_FORMATS = {"PNG", "JPEG", "WEBP"}
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 PROGRESS_LINE = re.compile(
@@ -146,10 +148,14 @@ def build_command(
     width: int,
     height: int,
     seed: int,
+    references: Optional[list[Path]] = None,
 ) -> list[str]:
     steps = str(configured_steps())
     cfg = os.environ.get("FLUX_CFG", str(DEFAULT_CFG))
-    return [
+    refs = list(references or [])
+    if len(refs) > MAX_REFERENCE_IMAGES:
+        raise ValueError(f"Upload at most {MAX_REFERENCE_IMAGES} reference images.")
+    command = [
         cli,
         "generate",
         "--model",
@@ -160,25 +166,35 @@ def build_command(
         prompt,
         "--image",
         str(source),
-        "--strength",
-        f"{strength:.2f}",
-        "--steps",
-        steps,
-        "--cfg",
-        cfg,
-        "--width",
-        str(width),
-        "--height",
-        str(height),
-        "--seed",
-        str(seed),
-        "--output",
-        str(destination),
-        "--local",
-        "--offline",
-        "--no-download-missing",
-        "--disable-preview",
     ]
+    for path in refs:
+        command.extend(["--image", str(path)])
+    # With extra references, omit --strength so Klein treats every --image as a
+    # reference (image 1, 2, …). Passing strength puts image 1 on the canvas as
+    # img2img and Klein mostly "traces" it, so outfit/style refs barely apply.
+    if not refs:
+        command.extend(["--strength", f"{strength:.2f}"])
+    command.extend(
+        [
+            "--steps",
+            steps,
+            "--cfg",
+            cfg,
+            "--width",
+            str(width),
+            "--height",
+            str(height),
+            "--seed",
+            str(seed),
+            "--output",
+            str(destination),
+            "--local",
+            "--offline",
+            "--no-download-missing",
+            "--disable-preview",
+        ]
+    )
+    return command
 
 
 def runtime_status() -> dict:
@@ -231,6 +247,7 @@ def edit_image(
     height: int,
     seed: Optional[int] = None,
     original_size: Optional[tuple[int, int]] = None,
+    references: Optional[list[Path]] = None,
     on_progress: Optional[Callable[[ProgressEvent], None]] = None,
     on_start: Optional[Callable[[subprocess.Popen], None]] = None,
     cancelled: Callable[[], bool] = lambda: False,
@@ -240,6 +257,9 @@ def edit_image(
         raise ValueError("Enter an edit instruction.")
     if not 0 < strength <= 1:
         raise ValueError("Edit strength must be greater than 0 and at most 1.")
+    refs = list(references or [])
+    if len(refs) > MAX_REFERENCE_IMAGES:
+        raise ValueError(f"Upload at most {MAX_REFERENCE_IMAGES} reference images.")
     status = ensure_ready()
 
     chosen_seed = random.randrange(0, 2**32) if seed is None else seed
@@ -253,6 +273,7 @@ def edit_image(
         width=width,
         height=height,
         seed=chosen_seed,
+        references=refs,
     )
     destination.parent.mkdir(parents=True, exist_ok=True)
     if cancelled():

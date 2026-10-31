@@ -8,6 +8,7 @@ from PIL import Image
 
 import app.main as main
 from app.flux import (
+    MAX_REFERENCE_IMAGES,
     MODEL_FILE,
     EditCancelled,
     ProgressEvent,
@@ -125,6 +126,60 @@ def test_command_targets_local_klein_model(tmp_path: Path):
     assert "--no-download-missing" in command
     assert command[command.index("--prompt") + 1] == "add a red coat"
     assert command[command.index("--strength") + 1] == "0.65"
+    assert command.count("--image") == 1
+
+
+def test_command_appends_reference_images(tmp_path: Path):
+    ref_a = tmp_path / "outfit.png"
+    ref_b = tmp_path / "style.png"
+    command = build_command(
+        cli="draw-things-cli",
+        models_dir=tmp_path,
+        source=tmp_path / "person.png",
+        destination=tmp_path / "out.png",
+        prompt="The person from image 1 wearing the outfit from image 2",
+        strength=1.0,
+        width=512,
+        height=512,
+        seed=7,
+        references=[ref_a, ref_b],
+    )
+    image_flags = [command[i + 1] for i, part in enumerate(command) if part == "--image"]
+    assert image_flags == [str(tmp_path / "person.png"), str(ref_a), str(ref_b)]
+    assert "--strength" not in command
+
+
+def test_command_keeps_strength_without_references(tmp_path: Path):
+    command = build_command(
+        cli="draw-things-cli",
+        models_dir=tmp_path,
+        source=tmp_path / "in.png",
+        destination=tmp_path / "out.png",
+        prompt="add snow",
+        strength=0.8,
+        width=512,
+        height=512,
+        seed=2,
+    )
+    assert command[command.index("--strength") + 1] == "0.80"
+    assert command.count("--image") == 1
+
+
+def test_command_rejects_too_many_references(tmp_path: Path):
+    refs = [tmp_path / f"ref-{index}.png" for index in range(MAX_REFERENCE_IMAGES + 1)]
+    with pytest.raises(ValueError, match="reference images"):
+        build_command(
+            cli="draw-things-cli",
+            models_dir=tmp_path,
+            source=tmp_path / "person.png",
+            destination=tmp_path / "out.png",
+            prompt="wear outfit",
+            strength=1.0,
+            width=512,
+            height=512,
+            seed=1,
+            references=refs,
+        )
 
 
 def test_parse_progress_reads_cli_lines():
@@ -191,7 +246,12 @@ def test_homepage_has_instruction_upload_and_abort():
     page = TestClient(main.app).get("/")
     assert page.status_code == 200
     assert 'id="prompt"' in page.text
-    assert 'type="file"' in page.text
+    assert 'id="image"' in page.text
+    assert 'id="reference"' in page.text
+    assert 'id="pick-images"' in page.text
+    assert 'id="pick-references"' in page.text
+    assert "Upload reference images" in page.text
+    assert 'name="reference"' in page.text
     assert "multiple" in page.text
     assert 'id="abort"' in page.text
     assert 'id="time-left"' in page.text
@@ -397,6 +457,54 @@ def test_batch_rejects_too_many_images(monkeypatch):
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Upload at most 30 images at a time."
+
+
+def test_edit_rejects_too_many_references(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "jobs", JobManager())
+    client = TestClient(main.app)
+    files = [("image", ("photo.png", png_upload(tmp_path).read_bytes(), "image/png"))]
+    for index in range(MAX_REFERENCE_IMAGES + 1):
+        files.append(("reference", (f"ref-{index}.png", png_upload(tmp_path).read_bytes(), "image/png")))
+    response = client.post(
+        "/api/edit",
+        data={"prompt": "wear the outfit from image 2"},
+        files=files,
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == f"Upload at most {MAX_REFERENCE_IMAGES} reference images."
+
+
+def test_edit_passes_reference_images_to_cli(fake_cli, tmp_path, monkeypatch):
+    script = fake_cli()
+    script.write_text(
+        FAKE_CLI.format(delay=0.0)
+        + "\nopen(out + '.args', 'w').write('\\n'.join(args))\n"
+    )
+    monkeypatch.setattr(main, "jobs", JobManager())
+    client = TestClient(main.app)
+    person = png_upload(tmp_path, (128, 128))
+    outfit = tmp_path / "outfit.png"
+    Image.new("RGB", (96, 96), (200, 40, 40)).save(outfit)
+    with person.open("rb") as left, outfit.open("rb") as right:
+        response = client.post(
+            "/api/edit",
+            data={"prompt": "The person from image 1 wearing the outfit from image 2", "strength": "1"},
+            files=[
+                ("image", ("person.png", left, "image/png")),
+                ("reference", ("outfit.png", right, "image/png")),
+            ],
+        )
+    assert response.status_code == 202
+    done = wait_for(client, response.json()["id"])
+    assert done["status"] == "succeeded"
+    args_path = main.OUTPUT_DIR / done["folder"] / "person.png.args"
+    assert args_path.is_file()
+    args = args_path.read_text().splitlines()
+    image_args = [args[i + 1] for i, part in enumerate(args) if part == "--image"]
+    assert len(image_args) == 2
+    assert Path(image_args[0]).name.endswith(".png")
+    assert Path(image_args[1]).name.endswith(".png")
+    assert image_args[0] != image_args[1]
 
 
 def test_edit_endpoint_rejects_non_image():

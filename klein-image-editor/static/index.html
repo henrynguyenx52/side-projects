@@ -4,33 +4,50 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Klein Edit</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=ref-upload-3" />
   </head>
   <body>
     <main>
       <header>
         <p class="eyebrow">Local image edit</p>
         <h1>Klein Edit</h1>
-        <p class="lede">Describe the change, upload one photo or a batch, and edit them with FLUX.2 Klein 4B — 6-bit.</p>
+        <p class="lede">Describe the change, choose images to edit, then optionally add reference images for outfit or style. Runs on FLUX.2 Klein 4B — 6-bit.</p>
         <p id="status" role="status">Checking the local model…</p>
       </header>
 
       <form id="editor">
         <label for="prompt">Edit instruction</label>
-        <textarea id="prompt" name="prompt" rows="4" maxlength="2000" required placeholder="Make the sky overcast and add a red coat"></textarea>
+        <textarea id="prompt" name="prompt" rows="4" maxlength="2000" required placeholder="The person from image 1, keeping their face and pose, wearing the outfit from image 2"></textarea>
+        <p class="hint prompt-hint">Name references as <strong>image 1</strong>, <strong>image 2</strong>, … — not “the reference image”.</p>
 
-        <div class="controls">
-          <label class="upload" for="image">Upload images</label>
-          <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" multiple required />
-          <div class="strength-field">
-            <label class="strength" for="strength">
-              Edit strength
-              <output id="strength-value">1.00</output>
-            </label>
-            <input id="strength" name="strength" type="range" min="0.05" max="1" step="0.05" value="1" />
+        <div class="upload-panel">
+          <div class="upload-copy">
+            <h2>Images to edit</h2>
+            <p class="hint">These become <strong>image 1</strong> in the prompt. Upload one photo or a batch.</p>
           </div>
+          <button id="pick-images" type="button" class="upload-button">Upload images to edit</button>
+          <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" multiple required />
+          <p id="filename" class="file-list"></p>
         </div>
-        <p id="filename"></p>
+
+        <div class="upload-panel">
+          <div class="upload-copy">
+            <h2>Reference images</h2>
+            <p class="hint">Optional outfit, style, or scene refs. First ref is <strong>image 2</strong>, then 3 and 4. Up to <span id="max-references">3</span>.</p>
+          </div>
+          <button id="pick-references" type="button" class="upload-button upload-button-secondary">Upload reference images</button>
+          <input id="reference" name="reference" type="file" accept="image/png,image/jpeg,image/webp" multiple />
+          <p id="reference-filename" class="file-list"></p>
+        </div>
+
+        <div class="strength-field">
+          <label class="strength" for="strength">
+            Edit strength
+            <output id="strength-value">1.00</output>
+          </label>
+          <input id="strength" name="strength" type="range" min="0.05" max="1" step="0.05" value="1" />
+          <p id="strength-note" class="hint" hidden>Strength is ignored while reference images are attached, so Klein can use image 1–4 as references instead of tracing the original.</p>
+        </div>
 
         <div class="actions">
           <button id="submit" type="submit">Edit image</button>
@@ -54,6 +71,10 @@
           <h2>Original</h2>
           <div id="sources" class="thumbs"></div>
         </div>
+        <div id="references-column" hidden>
+          <h2>References</h2>
+          <div id="reference-thumbs" class="thumbs"></div>
+        </div>
         <div id="edited-column" hidden>
           <h2>Edited</h2>
           <p id="folder" hidden></p>
@@ -65,10 +86,15 @@
       const form = document.querySelector("#editor");
       const prompt = document.querySelector("#prompt");
       const image = document.querySelector("#image");
+      const reference = document.querySelector("#reference");
+      const pickImages = document.querySelector("#pick-images");
+      const pickReferences = document.querySelector("#pick-references");
       const strength = document.querySelector("#strength");
       const strengthValue = document.querySelector("#strength-value");
       const status = document.querySelector("#status");
       const filename = document.querySelector("#filename");
+      const referenceFilename = document.querySelector("#reference-filename");
+      const maxReferencesLabel = document.querySelector("#max-references");
       const message = document.querySelector("#message");
       const submit = document.querySelector("#submit");
       const abort = document.querySelector("#abort");
@@ -79,14 +105,26 @@
       const progressTrack = progress.querySelector(".progress-track");
       const preview = document.querySelector("#preview");
       const sources = document.querySelector("#sources");
+      const referenceThumbs = document.querySelector("#reference-thumbs");
+      const referencesColumn = document.querySelector("#references-column");
       const results = document.querySelector("#results");
       const folder = document.querySelector("#folder");
       const editedColumn = document.querySelector("#edited-column");
       const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
       let ready = false;
       let maxBatch = 30;
+      let maxReferences = 3;
       let currentJob = null;
       let sourceUrls = [];
+      let referenceUrls = [];
+
+      const strengthNote = document.querySelector("#strength-note");
+
+      function syncStrengthForReferences() {
+        const hasRefs = reference.files.length > 0;
+        strength.disabled = hasRefs || submit.disabled;
+        strengthNote.hidden = !hasRefs;
+      }
 
       strength.addEventListener("input", () => {
         strengthValue.textContent = Number(strength.value).toFixed(2);
@@ -98,6 +136,15 @@
         if (files.length <= 4) return `${files.length} images · ${files.map((file) => file.name).join(", ")}`;
         const shown = files.slice(0, 3).map((file) => file.name).join(", ");
         return `${files.length} images · ${shown}, and ${files.length - 3} more`;
+      }
+
+      function updatePreviewVisibility() {
+        const hasSources = sources.childElementCount > 0;
+        const hasRefs = referenceThumbs.childElementCount > 0;
+        const hasResults = !editedColumn.hidden && results.childElementCount > 0;
+        preview.hidden = !hasSources && !hasRefs && !hasResults;
+        preview.classList.toggle("has-results", hasResults);
+        preview.classList.toggle("has-references", hasRefs);
       }
 
       function fillThumbs(container, entries) {
@@ -114,8 +161,7 @@
           figure.append(img, caption);
           container.append(figure);
         }
-        preview.hidden = sources.childElementCount === 0 && results.childElementCount === 0;
-        preview.classList.toggle("has-results", !editedColumn.hidden && results.childElementCount > 0);
+        updatePreviewVisibility();
       }
 
       function showSources(files) {
@@ -128,10 +174,34 @@
         }));
       }
 
+      function showReferences(files) {
+        referenceUrls.forEach((url) => URL.revokeObjectURL(url));
+        referenceUrls = [];
+        referencesColumn.hidden = files.length === 0;
+        fillThumbs(referenceThumbs, files.map((file, index) => {
+          const url = URL.createObjectURL(file);
+          referenceUrls.push(url);
+          return { src: url, alt: file.name, caption: `image ${index + 2} · ${file.name}` };
+        }));
+      }
+
+      pickImages.addEventListener("click", () => image.click());
+      pickReferences.addEventListener("click", () => reference.click());
+
       image.addEventListener("change", () => {
         const files = [...image.files];
-        filename.textContent = describeSelection(files);
+        filename.textContent = files.length ? describeSelection(files) : "No images selected.";
         showSources(files);
+        if (!submit.disabled) setBusy(false);
+      });
+
+      reference.addEventListener("change", () => {
+        const files = [...reference.files];
+        referenceFilename.textContent = files.length
+          ? describeSelection(files)
+          : "No reference images selected.";
+        showReferences(files);
+        syncStrengthForReferences();
         if (!submit.disabled) setBusy(false);
       });
 
@@ -141,6 +211,10 @@
           const body = await response.json();
           ready = body.model_ready && body.cli_ready;
           if (body.max_batch) maxBatch = body.max_batch;
+          if (body.max_references) {
+            maxReferences = body.max_references;
+            maxReferencesLabel.textContent = String(maxReferences);
+          }
           if (ready) {
             status.textContent = `${body.model} is ready.`;
           } else if (!body.cli_ready) {
@@ -222,8 +296,11 @@
         const count = image.files.length;
         submit.textContent = busy ? "Editing…" : (count > 1 ? "Edit images" : "Edit image");
         image.disabled = busy;
+        reference.disabled = busy;
+        pickImages.disabled = busy;
+        pickReferences.disabled = busy;
         prompt.disabled = busy;
-        strength.disabled = busy;
+        strength.disabled = busy || reference.files.length > 0;
         abort.hidden = !busy;
         abort.disabled = false;
         abort.textContent = "Abort";
@@ -266,6 +343,10 @@
         }
         if (image.files.length > maxBatch) {
           message.textContent = `Upload at most ${maxBatch} images at a time.`;
+          return;
+        }
+        if (reference.files.length > maxReferences) {
+          message.textContent = `Upload at most ${maxReferences} reference images.`;
           return;
         }
         const body = new FormData(form);

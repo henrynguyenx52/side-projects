@@ -34,7 +34,7 @@ h1 {
   line-height: 0.95;
 }
 
-.lede, #status, #filename, #message, figcaption {
+.lede, #status, #filename, #reference-filename, #message, .hint, figcaption {
   font-family: "Avenir Next", "Segoe UI", sans-serif;
 }
 
@@ -78,27 +78,67 @@ textarea {
   line-height: 1.4;
 }
 
-.controls {
+.upload-panel {
   display: grid;
-  grid-template-columns: minmax(180px, 240px) 1fr;
-  gap: 18px;
-  align-items: end;
-  margin-top: 18px;
+  grid-template-columns: 1fr auto;
+  gap: 10px 18px;
+  align-items: center;
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid #ddd4c4;
+  border-radius: 14px;
+  background: #f8f3ea;
 }
 
-.upload {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.upload-copy { grid-column: 1 / -1; }
+
+.upload-panel h2 {
+  margin: 0 0 6px;
+  color: #8a4b08;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hint {
+  margin: 0;
+  color: #5f584f;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.prompt-hint { margin: 8px 0 0; }
+
+.hint strong { color: #1d1a16; }
+
+.upload-button {
+  margin: 0;
   min-height: 44px;
   padding: 0 16px;
+  border: 0;
   border-radius: 999px;
   background: #1d1a16;
   color: #fffaf3;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-#image {
+.upload-button-secondary {
+  background: #8a4b08;
+  color: #fffaf3;
+}
+
+.upload-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+#image,
+#reference {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -106,7 +146,17 @@ textarea {
   clip: rect(0 0 0 0);
 }
 
-.strength-field { min-width: 0; }
+.file-list {
+  grid-column: 1 / -1;
+  min-height: 1.2em;
+  margin: 0;
+  color: #5f584f;
+}
+
+.strength-field {
+  margin-top: 22px;
+  min-width: 0;
+}
 
 .strength output {
   margin-left: 8px;
@@ -116,9 +166,11 @@ textarea {
 
 input[type="range"] { width: 100%; margin: 12px 0 0; }
 
-#filename, #message { min-height: 1.2em; margin: 12px 0 0; color: #5f584f; }
-
-#message { color: #8d2f12; }
+#message {
+  min-height: 1.2em;
+  margin: 12px 0 0;
+  color: #8d2f12;
+}
 
 button {
   margin-top: 18px;
@@ -183,6 +235,8 @@ button.abort:not(:disabled):hover { background: #8d2f12; color: white; }
 
 .preview.has-results { grid-template-columns: 1fr 1fr; }
 
+.preview.has-references.has-results { grid-template-columns: 1fr 1fr 1fr; }
+
 .preview h2 {
   margin: 0 0 12px;
   color: #8a4b08;
@@ -242,5 +296,15 @@ figcaption { margin-top: 8px; color: #5f584f; }
 
 @media (max-width: 700px) {
   h1 { font-size: 42px; }
-  .controls, .preview, .preview.has-results { grid-template-columns: 1fr; }
+  .upload-panel,
+  .preview,
+  .preview.has-results,
+  .preview.has-references.has-results {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-button,
+  .upload-button-secondary {
+    width: 100%;
+  }
 }

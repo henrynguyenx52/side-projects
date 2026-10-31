@@ -16,7 +16,7 @@ Open http://127.0.0.1:8001.
 
 The model directory defaults to `~/Library/Containers/com.liuliu.draw-things/Data/Documents/Models`. Override it with `DRAWTHINGS_MODELS_DIR` or point at another CLI binary with `DRAWTHINGS_CLI`.
 
-Each edit runs as a background job. You can upload up to 30 images in one batch; they are edited one after another with the same instruction and strength. While a batch runs, the page shows which image is current, the sampling step, an estimate of the time left, and an Abort button that stops the model process. One batch runs at a time.
+Each edit runs as a background job. You can upload up to 30 images in one batch; they are edited one after another with the same instruction and strength. Optionally add up to 3 shared reference images (outfit, style, scene). In the prompt, the edit target is image 1 and references are image 2, 3, and 4 — for example: `The person from image 1, keeping their face and pose, wearing the outfit from image 2`. When references are present, the editor omits img2img strength so Klein treats every upload as a reference instead of tracing the original photo. While a batch runs, the page shows which image is current, the sampling step, an estimate of the time left, and an Abort button that stops the model process. One batch runs at a time.
 
 Finished images from a batch are saved together in a new folder under `outputs`, named with the time the batch started in milliseconds, for example `outputs/1792770180217`.
 

@@ -16,6 +16,7 @@ from PIL import Image, UnidentifiedImageError
 
 from app.flux import (
     DEFAULT_STRENGTH,
+    MAX_REFERENCE_IMAGES,
     EditCancelled,
     PreparedImage,
     ProgressEvent,
@@ -109,18 +110,56 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/")
 def index() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+    return FileResponse(
+        STATIC_DIR / "index.html",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/api/status")
 def api_status() -> dict:
-    return {**runtime_status(), "max_batch": MAX_BATCH}
+    return {
+        **runtime_status(),
+        "max_batch": MAX_BATCH,
+        "max_references": MAX_REFERENCE_IMAGES,
+    }
+
+
+async def prepare_upload(
+    upload: UploadFile,
+    *,
+    empty_detail: str,
+    temp_paths: list[Path],
+) -> tuple[str, Path, PreparedImage]:
+    source_name = Path(upload.filename or "image").name or "image"
+    payload = await upload.read()
+    if not payload:
+        raise HTTPException(status_code=400, detail=empty_detail)
+    if len(payload) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail=f"{source_name} must be 15 MB or smaller.")
+
+    token = uuid.uuid4().hex
+    upload_path = UPLOAD_DIR / f"{token}-source"
+    prepared_path = UPLOAD_DIR / f"{token}.png"
+    temp_paths.extend((upload_path, prepared_path))
+    upload_path.write_bytes(payload)
+    try:
+        prepared = prepare_image(upload_path, prepared_path)
+    except UnidentifiedImageError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{source_name} is not a PNG, JPEG, or WebP image.",
+        ) from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=f"{source_name}: {error}") from error
+    return source_name, prepared_path, prepared
 
 
 @app.post("/api/edit", status_code=202)
 async def api_edit(
     prompt: str = Form(...),
     image: list[UploadFile] = File(...),
+    reference: list[UploadFile] = File(default=[]),
     strength: float = Form(DEFAULT_STRENGTH),
 ) -> dict:
     if not prompt.strip():
@@ -131,11 +170,18 @@ async def api_edit(
         raise HTTPException(status_code=400, detail="Choose an image to edit.")
     if len(image) > MAX_BATCH:
         raise HTTPException(status_code=400, detail=f"Upload at most {MAX_BATCH} images at a time.")
+    references = [item for item in reference if item.filename]
+    if len(references) > MAX_REFERENCE_IMAGES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Upload at most {MAX_REFERENCE_IMAGES} reference images.",
+        )
     if jobs.active() is not None:
         raise HTTPException(status_code=409, detail="Another edit is already running. Abort it or wait for it to finish.")
 
     temp_paths: list[Path] = []
     pending: list[tuple[str, Path, PreparedImage]] = []
+    reference_paths: list[Path] = []
 
     def remove_temps() -> None:
         for path in temp_paths:
@@ -143,33 +189,23 @@ async def api_edit(
 
     try:
         for upload in image:
-            source_name = Path(upload.filename or "image").name or "image"
-            payload = await upload.read()
-            if not payload:
-                remove_temps()
-                raise HTTPException(status_code=400, detail=f"{source_name} is empty. Choose an image to edit.")
-            if len(payload) > MAX_UPLOAD_BYTES:
-                remove_temps()
-                raise HTTPException(status_code=400, detail=f"{source_name} must be 15 MB or smaller.")
-
-            token = uuid.uuid4().hex
-            upload_path = UPLOAD_DIR / f"{token}-source"
-            prepared_path = UPLOAD_DIR / f"{token}.png"
-            temp_paths.extend((upload_path, prepared_path))
-            upload_path.write_bytes(payload)
-            try:
-                prepared = prepare_image(upload_path, prepared_path)
-            except UnidentifiedImageError as error:
-                remove_temps()
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"{source_name} is not a PNG, JPEG, or WebP image.",
-                ) from error
-            except ValueError as error:
-                remove_temps()
-                raise HTTPException(status_code=400, detail=f"{source_name}: {error}") from error
+            source_name, prepared_path, prepared = await prepare_upload(
+                upload,
+                empty_detail=f"{Path(upload.filename or 'image').name or 'image'} is empty. Choose an image to edit.",
+                temp_paths=temp_paths,
+            )
             pending.append((source_name, prepared_path, prepared))
+        for upload in references:
+            _source_name, prepared_path, _prepared = await prepare_upload(
+                upload,
+                empty_detail=f"{Path(upload.filename or 'image').name or 'image'} is empty. Choose a reference image.",
+                temp_paths=temp_paths,
+            )
+            reference_paths.append(prepared_path)
         ensure_ready()
+    except HTTPException:
+        remove_temps()
+        raise
     except RuntimeError as error:
         remove_temps()
         raise HTTPException(status_code=503, detail=str(error)) from error
@@ -245,6 +281,7 @@ async def api_edit(
                     edit.canvas_width,
                     edit.canvas_height,
                     original_size=(edit.original_width, edit.original_height),
+                    references=reference_paths,
                     on_progress=on_progress,
                     on_start=callbacks["on_start"],
                     cancelled=callbacks["cancelled"],
