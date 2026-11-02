@@ -1,12 +1,15 @@
 ---
-description: OpenMontage project rules
-globs: ["**/*"]
-alwaysApply: true
+description: OpenMontage project rules - applies strictly to the open-montage repository
+globs: ["open-montage/**"]
+alwaysApply: false
 ---
 
 # OpenMontage
 
-MANDATORY: Read `AGENT_GUIDE.md` before responding to ANY user message.
+> **Scope: `open-montage/` repository ONLY.**  
+> Do not apply or evaluate this rule when working on other repositories (e.g. remotion, hyperframes, money-printer).
+
+MANDATORY: Read `AGENT_GUIDE.md` before responding to ANY user message concerning open-montage.
 
 Do not act on the user's request until you have read AGENT_GUIDE.md.
 It contains routing rules that determine your first action based on what the user asked.

@@ -1,0 +1,545 @@
+{
+  "id": "borrow-lend",
+  "wordA": {
+    "word": "Borrow",
+    "pronunciation": "/ˈbɒr.oʊ/",
+    "partOfSpeech": "verb",
+    "definition": "To take and use something belonging to someone else, returning it later.",
+    "vietnameseMeaning": "Mượn / Vay (Nhận về mình)",
+    "direction": "incoming",
+    "directionLabel": "Take IN (Receive)",
+    "directionIcon": "arrow-down-left",
+    "examples": [
+      "Can I borrow your pen for a minute?",
+      "She borrowed 50 dollars from her friend."
+    ],
+    "explanation": "Borrow là hành động nhận đồ hoặc tiền từ người khác về phía mình để dùng tạm.",
+    "keyCollocations": [
+      "borrow FROM someone",
+      "borrow books",
+      "borrow money"
+    ],
+    "colorAccent": "#38BDF8"
+  },
+  "wordB": {
+    "word": "Lend",
+    "pronunciation": "/lɛnd/",
+    "partOfSpeech": "verb",
+    "definition": "To give something to someone for a short period, expecting it back.",
+    "vietnameseMeaning": "Cho mượn / Cho vay (Đưa ra ngoài)",
+    "direction": "outgoing",
+    "directionLabel": "Give OUT (Provide)",
+    "directionIcon": "arrow-up-right",
+    "examples": [
+      "I can lend you my pen.",
+      "The bank agreed to lend him the money."
+    ],
+    "explanation": "Lend là hành động đưa đồ hoặc tiền của mình cho người khác mượn tạm.",
+    "keyCollocations": [
+      "lend something TO someone",
+      "lend a hand",
+      "lend support"
+    ],
+    "colorAccent": "#34D399"
+  },
+  "comparison": {
+    "headline": "Quy Tắc Hướng Đi (Movement)",
+    "summary": "Borrow là nhận vào. Lend là đưa ra.",
+    "ruleA": "Borrow = IN (Nhận đồ từ ai đó)",
+    "ruleB": "Lend = OUT (Đưa đồ cho ai đó)",
+    "memoryTrick": "Borrow: nhận về phía mình. Lend: để nó đi ra ngoài!"
+  },
+  "commonMistake": {
+    "incorrect": "Can you borrow me your car?",
+    "correct": "Can you lend me your car?",
+    "explanation": "Không nói 'borrow me'. Phải dùng 'lend to someone' hoặc 'borrow from someone'."
+  },
+  "quiz": {
+    "question": "Could you please _____ me twenty dollars?",
+    "options": [
+      "A. borrow",
+      "B. lend"
+    ],
+    "answer": "B",
+    "answerWord": "lend",
+    "explanation": "Bạn đang nhờ đối phương đưa tiền ra cho bạn mượn, nên phải dùng lend!"
+  },
+  "narration": {
+    "totalAudioDurationSeconds": 60.1948,
+    "scenes": [
+      {
+        "sceneId": "hook",
+        "title": "Hook",
+        "text": "Bạn có hay bị nhầm lẫn giữa Borrow và Lend không? Xem hết video này để nhớ mãi mãi quy tắc vàng cực dễ nhé!",
+        "caption": "Đừng nhầm lẫn giữa Borrow và Lend!",
+        "audioDurationSeconds": 5.2977,
+        "startFrame": 0,
+        "durationInFrames": 174,
+        "audioFile": "audio/borrow-lend/scene-hook.mp3"
+      },
+      {
+        "sceneId": "wordA",
+        "title": "Borrow",
+        "text": "Đầu tiên là Borrow, phát âm là /ˈbɒr.oʊ/. Từ này có nghĩa là mượn hoặc vay, tức là bạn nhận đồ từ người khác về phía mình. Ví dụ: Can I borrow your pen? Chiếc bút đang đi về phía bạn!",
+        "caption": "Borrow = Mượn / Vay (Nhận về mình)",
+        "audioDurationSeconds": 10.5818,
+        "startFrame": 174,
+        "durationInFrames": 333,
+        "audioFile": "audio/borrow-lend/scene-wordA.mp3"
+      },
+      {
+        "sceneId": "wordB",
+        "title": "Lend",
+        "text": "Tiếp theo là Lend, phát âm là /lɛnd/. Từ này có nghĩa là cho mượn hoặc cho vay, tức là bạn đưa đồ của mình ra cho người khác. Ví dụ: I can lend you my pen. Bạn đang đưa chiếc bút ra ngoài!",
+        "caption": "Lend = Cho mượn / Cho vay (Đưa ra ngoài)",
+        "audioDurationSeconds": 10.492,
+        "startFrame": 507,
+        "durationInFrames": 330,
+        "audioFile": "audio/borrow-lend/scene-wordB.mp3"
+      },
+      {
+        "sceneId": "comparison",
+        "title": "Comparison",
+        "text": "Quy tắc vàng nằm ở hướng chuyển động! Borrow là đi vào, nhận về phía bạn. Còn Lend là đi ra, đưa cho người khác. Nhớ mẹo này: Borrow nhận về, Lend cho đi!",
+        "caption": "Borrow nhận về • Lend cho đi",
+        "audioDurationSeconds": 8.7354,
+        "startFrame": 837,
+        "durationInFrames": 278,
+        "audioFile": "audio/borrow-lend/scene-comparison.mp3"
+      },
+      {
+        "sceneId": "mistake",
+        "title": "Common Mistake",
+        "text": "Lỗi sai cực kỳ phổ biến mà nhiều bạn mắc phải là nói: Can you borrow me your car? Câu này sai hoàn toàn nhé! Phải nói là: Can you lend me your car? hoặc Can I borrow your car?",
+        "caption": "Lỗi phổ biến: Đừng nói 'borrow me'!",
+        "audioDurationSeconds": 10.048,
+        "startFrame": 1115,
+        "durationInFrames": 317,
+        "audioFile": "audio/borrow-lend/scene-mistake.mp3"
+      },
+      {
+        "sceneId": "quiz",
+        "title": "Quick Quiz",
+        "text": "Thử tài nhanh nhé! Trong câu: Could you please blank me twenty dollars? Bạn chọn A: borrow hay B: lend? Đáp án chính xác là B: lend, vì bạn đang nhờ người khác đưa tiền ra cho mình!",
+        "caption": "Thử tài: Chọn Borrow hay Lend?",
+        "audioDurationSeconds": 10.074,
+        "startFrame": 1432,
+        "durationInFrames": 318,
+        "audioFile": "audio/borrow-lend/scene-quiz.mp3"
+      },
+      {
+        "sceneId": "cta",
+        "title": "Call to Action",
+        "text": "Hãy thả tim, lưu lại video này và follow kênh để mỗi ngày học thêm một mẹo tiếng Anh cực chất nhé!",
+        "caption": "Follow kênh để học tiếng Anh mỗi ngày!",
+        "audioDurationSeconds": 4.9659,
+        "startFrame": 1750,
+        "durationInFrames": 164,
+        "audioFile": "audio/borrow-lend/scene-cta.mp3"
+      }
+    ]
+  },
+  "subtitles": [
+    {
+      "text": "Bạn có hay bị nhầm",
+      "startFrame": 5,
+      "endFrame": 37,
+      "isKeyword": false,
+      "sceneId": "hook"
+    },
+    {
+      "text": "lẫn giữa Borrow và Lend",
+      "startFrame": 37,
+      "endFrame": 69,
+      "isKeyword": true,
+      "sceneId": "hook",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "không? Xem hết video này",
+      "startFrame": 69,
+      "endFrame": 101,
+      "isKeyword": false,
+      "sceneId": "hook"
+    },
+    {
+      "text": "để nhớ mãi mãi quy",
+      "startFrame": 101,
+      "endFrame": 133,
+      "isKeyword": false,
+      "sceneId": "hook"
+    },
+    {
+      "text": "tắc vàng cực dễ nhé!",
+      "startFrame": 133,
+      "endFrame": 169,
+      "isKeyword": false,
+      "sceneId": "hook"
+    },
+    {
+      "text": "Đầu tiên là Borrow, phát",
+      "startFrame": 179,
+      "endFrame": 214,
+      "isKeyword": true,
+      "sceneId": "wordA",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "âm là /ˈbɒr.oʊ/. Từ này",
+      "startFrame": 214,
+      "endFrame": 249,
+      "isKeyword": false,
+      "sceneId": "wordA"
+    },
+    {
+      "text": "có nghĩa là mượn hoặc",
+      "startFrame": 249,
+      "endFrame": 284,
+      "isKeyword": true,
+      "sceneId": "wordA",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "vay, tức là bạn nhận",
+      "startFrame": 284,
+      "endFrame": 319,
+      "isKeyword": true,
+      "sceneId": "wordA",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "đồ từ người khác về",
+      "startFrame": 319,
+      "endFrame": 354,
+      "isKeyword": false,
+      "sceneId": "wordA"
+    },
+    {
+      "text": "phía mình. Ví dụ: Can",
+      "startFrame": 354,
+      "endFrame": 389,
+      "isKeyword": false,
+      "sceneId": "wordA"
+    },
+    {
+      "text": "I borrow your pen? Chiếc",
+      "startFrame": 389,
+      "endFrame": 424,
+      "isKeyword": true,
+      "sceneId": "wordA",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "bút đang đi về phía",
+      "startFrame": 424,
+      "endFrame": 459,
+      "isKeyword": false,
+      "sceneId": "wordA"
+    },
+    {
+      "text": "bạn!",
+      "startFrame": 459,
+      "endFrame": 502,
+      "isKeyword": false,
+      "sceneId": "wordA"
+    },
+    {
+      "text": "Tiếp theo là Lend, phát",
+      "startFrame": 512,
+      "endFrame": 547,
+      "isKeyword": true,
+      "sceneId": "wordB",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "âm là /lɛnd/. Từ này",
+      "startFrame": 547,
+      "endFrame": 582,
+      "isKeyword": false,
+      "sceneId": "wordB"
+    },
+    {
+      "text": "có nghĩa là cho mượn",
+      "startFrame": 582,
+      "endFrame": 617,
+      "isKeyword": true,
+      "sceneId": "wordB",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "hoặc cho vay, tức là",
+      "startFrame": 617,
+      "endFrame": 652,
+      "isKeyword": false,
+      "sceneId": "wordB"
+    },
+    {
+      "text": "bạn đưa đồ của mình",
+      "startFrame": 652,
+      "endFrame": 687,
+      "isKeyword": false,
+      "sceneId": "wordB"
+    },
+    {
+      "text": "ra cho người khác. Ví",
+      "startFrame": 687,
+      "endFrame": 722,
+      "isKeyword": false,
+      "sceneId": "wordB"
+    },
+    {
+      "text": "dụ: I can lend you",
+      "startFrame": 722,
+      "endFrame": 757,
+      "isKeyword": true,
+      "sceneId": "wordB",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "my pen. Bạn đang đưa",
+      "startFrame": 757,
+      "endFrame": 792,
+      "isKeyword": false,
+      "sceneId": "wordB"
+    },
+    {
+      "text": "chiếc bút ra ngoài!",
+      "startFrame": 792,
+      "endFrame": 832,
+      "isKeyword": false,
+      "sceneId": "wordB"
+    },
+    {
+      "text": "Quy tắc vàng nằm ở",
+      "startFrame": 842,
+      "endFrame": 880,
+      "isKeyword": false,
+      "sceneId": "comparison"
+    },
+    {
+      "text": "hướng chuyển động! Borrow là",
+      "startFrame": 880,
+      "endFrame": 918,
+      "isKeyword": true,
+      "sceneId": "comparison",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "đi vào, nhận về phía",
+      "startFrame": 918,
+      "endFrame": 956,
+      "isKeyword": true,
+      "sceneId": "comparison",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "bạn. Còn Lend là đi",
+      "startFrame": 956,
+      "endFrame": 994,
+      "isKeyword": true,
+      "sceneId": "comparison",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "ra, đưa cho người khác.",
+      "startFrame": 994,
+      "endFrame": 1032,
+      "isKeyword": false,
+      "sceneId": "comparison"
+    },
+    {
+      "text": "Nhớ mẹo này: Borrow nhận",
+      "startFrame": 1032,
+      "endFrame": 1070,
+      "isKeyword": true,
+      "sceneId": "comparison",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "về, Lend cho đi!",
+      "startFrame": 1070,
+      "endFrame": 1110,
+      "isKeyword": true,
+      "sceneId": "comparison",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "Lỗi sai cực kỳ phổ",
+      "startFrame": 1120,
+      "endFrame": 1158,
+      "isKeyword": false,
+      "sceneId": "mistake"
+    },
+    {
+      "text": "biến mà nhiều bạn mắc",
+      "startFrame": 1158,
+      "endFrame": 1196,
+      "isKeyword": false,
+      "sceneId": "mistake"
+    },
+    {
+      "text": "phải là nói: Can you",
+      "startFrame": 1196,
+      "endFrame": 1234,
+      "isKeyword": false,
+      "sceneId": "mistake"
+    },
+    {
+      "text": "borrow me your car? Câu",
+      "startFrame": 1234,
+      "endFrame": 1272,
+      "isKeyword": true,
+      "sceneId": "mistake",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "này sai hoàn toàn nhé!",
+      "startFrame": 1272,
+      "endFrame": 1310,
+      "isKeyword": false,
+      "sceneId": "mistake"
+    },
+    {
+      "text": "Phải nói là: Can you",
+      "startFrame": 1310,
+      "endFrame": 1348,
+      "isKeyword": false,
+      "sceneId": "mistake"
+    },
+    {
+      "text": "lend me your car? hoặc",
+      "startFrame": 1348,
+      "endFrame": 1386,
+      "isKeyword": true,
+      "sceneId": "mistake",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "Can I borrow your car?",
+      "startFrame": 1386,
+      "endFrame": 1427,
+      "isKeyword": true,
+      "sceneId": "mistake",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "Thử tài nhanh nhé! Trong",
+      "startFrame": 1437,
+      "endFrame": 1475,
+      "isKeyword": false,
+      "sceneId": "quiz"
+    },
+    {
+      "text": "câu: Could you please blank",
+      "startFrame": 1475,
+      "endFrame": 1513,
+      "isKeyword": false,
+      "sceneId": "quiz"
+    },
+    {
+      "text": "me twenty dollars? Bạn chọn",
+      "startFrame": 1513,
+      "endFrame": 1551,
+      "isKeyword": false,
+      "sceneId": "quiz"
+    },
+    {
+      "text": "A: borrow hay B: lend?",
+      "startFrame": 1551,
+      "endFrame": 1589,
+      "isKeyword": true,
+      "sceneId": "quiz",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "Đáp án chính xác là",
+      "startFrame": 1589,
+      "endFrame": 1627,
+      "isKeyword": false,
+      "sceneId": "quiz"
+    },
+    {
+      "text": "B: lend, vì bạn đang",
+      "startFrame": 1627,
+      "endFrame": 1665,
+      "isKeyword": true,
+      "sceneId": "quiz",
+      "color": "#38BDF8"
+    },
+    {
+      "text": "nhờ người khác đưa tiền",
+      "startFrame": 1665,
+      "endFrame": 1703,
+      "isKeyword": false,
+      "sceneId": "quiz"
+    },
+    {
+      "text": "ra cho mình!",
+      "startFrame": 1703,
+      "endFrame": 1745,
+      "isKeyword": false,
+      "sceneId": "quiz"
+    },
+    {
+      "text": "Hãy thả tim, lưu lại",
+      "startFrame": 1755,
+      "endFrame": 1785,
+      "isKeyword": false,
+      "sceneId": "cta"
+    },
+    {
+      "text": "video này và follow kênh",
+      "startFrame": 1785,
+      "endFrame": 1815,
+      "isKeyword": false,
+      "sceneId": "cta"
+    },
+    {
+      "text": "để mỗi ngày học thêm",
+      "startFrame": 1815,
+      "endFrame": 1845,
+      "isKeyword": false,
+      "sceneId": "cta"
+    },
+    {
+      "text": "một mẹo tiếng Anh cực",
+      "startFrame": 1845,
+      "endFrame": 1875,
+      "isKeyword": false,
+      "sceneId": "cta"
+    },
+    {
+      "text": "chất nhé!",
+      "startFrame": 1875,
+      "endFrame": 1909,
+      "isKeyword": false,
+      "sceneId": "cta"
+    }
+  ],
+  "config": {
+    "aspectRatio": "9:16",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "totalDurationInFrames": 1914,
+    "voice": "zeroTTS (baotrang)",
+    "showSubtitles": true,
+    "includeMistakeScene": true,
+    "includeQuizScene": true,
+    "ctaText": "Follow for more daily English tips!",
+    "targetAudience": "Vietnamese English learners",
+    "level": "A2-B2",
+    "theme": {
+      "wordAColor": "#38BDF8",
+      "wordBColor": "#34D399",
+      "bgColor": "#090D16",
+      "cardBg": "rgba(30, 41, 59, 0.72)",
+      "cardBorder": "rgba(148, 163, 184, 0.16)",
+      "textPrimary": "#F8FAFC",
+      "textSecondary": "#94A3B8",
+      "accentGlow": "rgba(56, 189, 248, 0.25)",
+      "mistakeColor": "#F43F5E",
+      "correctColor": "#10B981"
+    }
+  }
+}

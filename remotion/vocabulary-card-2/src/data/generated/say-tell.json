@@ -1,0 +1,477 @@
+{
+  "id": "say-tell",
+  "wordA": {
+    "word": "Say",
+    "pronunciation": "/seɪ/",
+    "partOfSpeech": "verb",
+    "definition": "Tập trung vào nội dung lời nói, không cần người nghe ngay sau.",
+    "vietnameseMeaning": "Nói điều gì đó (Tập trung lời nói)",
+    "direction": "neutral",
+    "directionLabel": "Tập trung vào điều em nói",
+    "directionIcon": "message-square",
+    "examples": [
+      "He said he was tired.",
+      "What did she say to you?"
+    ],
+    "explanation": "SAY tập trung vào điều em nói, chứ không cần gọi tên người nghe ngay phía sau.",
+    "keyCollocations": [
+      "SAY something",
+      "SAY that...",
+      "SAY something TO someone"
+    ],
+    "colorAccent": "#1CB0F6"
+  },
+  "wordB": {
+    "word": "Tell",
+    "pronunciation": "/tɛl/",
+    "partOfSpeech": "verb",
+    "definition": "Truyền đạt thông tin cho ai đó, bắt buộc có người nhận ngay sau.",
+    "vietnameseMeaning": "Kể / Bảo (Tập trung người nhận)",
+    "direction": "outgoing",
+    "directionLabel": "Truyền đạt cho người nghe",
+    "directionIcon": "user-check",
+    "examples": [
+      "She told me a secret.",
+      "He told me that he was busy."
+    ],
+    "explanation": "Khi TELL mang nghĩa truyền đạt thông tin cho ai đó, em cần có người nhận ngay phía sau.",
+    "keyCollocations": [
+      "TELL someone something",
+      "TELL me a secret",
+      "TELL the truth"
+    ],
+    "colorAccent": "#FF9600"
+  },
+  "comparison": {
+    "headline": "QUY TẮC NGƯỜI NHẬN",
+    "summary": "SAY lời muốn nói • TELL người cần nghe",
+    "ruleA": "SAY + something (Nói điều gì đó)",
+    "ruleB": "TELL + someone + something (Nói với ai)",
+    "memoryTrick": "SAY lời muốn nói, TELL người cần nghe!"
+  },
+  "commonMistake": {
+    "incorrect": "He said me that he was busy.",
+    "correct": "He told me that he was busy.",
+    "explanation": "Tuyệt đối không dùng 'said me'! Hoặc dùng: 'He said that he was busy to me'."
+  },
+  "quiz": {
+    "question": "Did she _____ you what happened yesterday?",
+    "options": [
+      "A. SAY",
+      "B. TELL"
+    ],
+    "answer": "B",
+    "answerWord": "TELL",
+    "explanation": "Vì có YOU ngay phía sau!"
+  },
+  "narration": {
+    "totalAudioDurationSeconds": 58.45183333333333,
+    "scenes": [
+      {
+        "sceneId": "hook",
+        "title": "Hook",
+        "caption": "Đừng nói HE SAID ME nữa nhé! 😭",
+        "text": "Xin chào, xin chào! Các em đã bao giờ nghe câu He said me chưa? Nghe có vẻ đúng đúng, nhưng thực ra lại sai ngữ pháp đấy nhé! Hôm nay, anh sẽ giúp các em phân biệt SAY và TELL chỉ trong 40 giây. Bắt đầu nào!",
+        "audioFile": "audio/say-tell/scene-hook.wav",
+        "audioDurationSeconds": 13.0458125,
+        "startFrame": 0,
+        "durationInFrames": 404
+      },
+      {
+        "sceneId": "wordA",
+        "title": "SAY",
+        "caption": "SAY = Nói điều gì đó",
+        "text": "Đầu tiên, SAY là nói điều gì đó. Ví dụ: He said he was tired. Anh ấy nói rằng anh ấy mệt. Nhớ nhé, SAY tập trung vào nội dung lời nói!",
+        "audioFile": "audio/say-tell/scene-wordA.wav",
+        "audioDurationSeconds": 8.533083333333334,
+        "startFrame": 404,
+        "durationInFrames": 268
+      },
+      {
+        "sceneId": "wordB",
+        "title": "TELL",
+        "caption": "TELL = Nói với ai đó",
+        "text": "Còn TELL là nói với ai đó. Ví dụ: She told me a secret. Cô ấy kể cho anh một bí mật. TELL nhớ phải có người nhận ngay phía sau nhé!",
+        "audioFile": "audio/say-tell/scene-wordB.wav",
+        "audioDurationSeconds": 7.8198125,
+        "startFrame": 672,
+        "durationInFrames": 247
+      },
+      {
+        "sceneId": "comparison",
+        "title": "COMPARISON",
+        "caption": "SAY lời muốn nói • TELL người cần nghe",
+        "text": "Chốt lại cho dễ nhớ: SAY something, nhưng TELL someone something. SAY lời muốn nói, TELL người cần nghe. Quá dễ đúng không?",
+        "audioFile": "audio/say-tell/scene-comparison.wav",
+        "audioDurationSeconds": 7.993125,
+        "startFrame": 919,
+        "durationInFrames": 252
+      },
+      {
+        "sceneId": "quiz",
+        "title": "QUIZ",
+        "caption": "Did she _____ you what happened yesterday?\nA. SAY   B. TELL",
+        "text": "Thử sức nhé! Did she _____ you what happened yesterday? SAY hay TELL? Năm... Bốn... Ba... Hai... Một...! Đáp án là TELL! Vì có YOU ngay phía sau!",
+        "audioFile": "audio/say-tell/scene-quiz.wav",
+        "audioDurationSeconds": 8.43,
+        "startFrame": 1171,
+        "durationInFrames": 265
+      },
+      {
+        "sceneId": "cta",
+        "title": "CTA + TƯƠNG TÁC",
+        "caption": "She _____ me that she loved him. SAY hay TELL?",
+        "text": "Giờ anh có một câu dành riêng cho em nhé! She _____ me that she loved him. SAY hay TELL? Comment đáp án bên dưới cho anh biết nhé! Anh sẽ kiểm tra xem có bao nhiêu người trả lời đúng. Đừng nhìn đáp án người khác đấy!",
+        "audioFile": "audio/say-tell/scene-cta.wav",
+        "audioDurationSeconds": 12.63,
+        "startFrame": 1436,
+        "durationInFrames": 391
+      }
+    ]
+  },
+  "subtitles": [
+    {
+      "text": "Xin chào, xin chào! Các",
+      "startFrame": 0,
+      "endFrame": 39,
+      "sceneId": "hook",
+      "isKeyword": false
+    },
+    {
+      "text": "em đã bao giờ nghe",
+      "startFrame": 39,
+      "endFrame": 78,
+      "sceneId": "hook",
+      "isKeyword": false
+    },
+    {
+      "text": "câu He said me chưa?",
+      "startFrame": 78,
+      "endFrame": 117,
+      "sceneId": "hook",
+      "isKeyword": true
+    },
+    {
+      "text": "Nghe có vẻ đúng đúng,",
+      "startFrame": 117,
+      "endFrame": 156,
+      "sceneId": "hook",
+      "isKeyword": false
+    },
+    {
+      "text": "nhưng thực ra lại sai",
+      "startFrame": 156,
+      "endFrame": 195,
+      "sceneId": "hook",
+      "isKeyword": false
+    },
+    {
+      "text": "ngữ pháp đấy nhé! Hôm",
+      "startFrame": 195,
+      "endFrame": 234,
+      "sceneId": "hook",
+      "isKeyword": false
+    },
+    {
+      "text": "nay, anh sẽ giúp các",
+      "startFrame": 234,
+      "endFrame": 273,
+      "sceneId": "hook",
+      "isKeyword": false
+    },
+    {
+      "text": "em phân biệt SAY và",
+      "startFrame": 273,
+      "endFrame": 312,
+      "sceneId": "hook",
+      "isKeyword": true
+    },
+    {
+      "text": "TELL chỉ trong 40 giây.",
+      "startFrame": 312,
+      "endFrame": 351,
+      "sceneId": "hook",
+      "isKeyword": true
+    },
+    {
+      "text": "Bắt đầu nào!",
+      "startFrame": 351,
+      "endFrame": 390,
+      "sceneId": "hook",
+      "isKeyword": false
+    },
+    {
+      "text": "Đầu tiên, SAY là nói",
+      "startFrame": 404,
+      "endFrame": 441,
+      "sceneId": "wordA",
+      "isKeyword": true
+    },
+    {
+      "text": "điều gì đó. Ví dụ:",
+      "startFrame": 441,
+      "endFrame": 478,
+      "sceneId": "wordA",
+      "isKeyword": false
+    },
+    {
+      "text": "He said he was tired.",
+      "startFrame": 478,
+      "endFrame": 515,
+      "sceneId": "wordA",
+      "isKeyword": false
+    },
+    {
+      "text": "Anh ấy nói rằng anh",
+      "startFrame": 515,
+      "endFrame": 552,
+      "sceneId": "wordA",
+      "isKeyword": false
+    },
+    {
+      "text": "ấy mệt. Nhớ nhé, SAY",
+      "startFrame": 552,
+      "endFrame": 589,
+      "sceneId": "wordA",
+      "isKeyword": true
+    },
+    {
+      "text": "tập trung vào nội dung",
+      "startFrame": 589,
+      "endFrame": 626,
+      "sceneId": "wordA",
+      "isKeyword": false
+    },
+    {
+      "text": "lời nói!",
+      "startFrame": 626,
+      "endFrame": 663,
+      "sceneId": "wordA",
+      "isKeyword": false
+    },
+    {
+      "text": "Còn TELL là nói với",
+      "startFrame": 672,
+      "endFrame": 706,
+      "sceneId": "wordB",
+      "isKeyword": true
+    },
+    {
+      "text": "ai đó. Ví dụ: She",
+      "startFrame": 706,
+      "endFrame": 740,
+      "sceneId": "wordB",
+      "isKeyword": false
+    },
+    {
+      "text": "told me a secret. Cô",
+      "startFrame": 740,
+      "endFrame": 774,
+      "sceneId": "wordB",
+      "isKeyword": true
+    },
+    {
+      "text": "ấy kể cho anh một",
+      "startFrame": 774,
+      "endFrame": 808,
+      "sceneId": "wordB",
+      "isKeyword": false
+    },
+    {
+      "text": "bí mật. TELL nhớ phải",
+      "startFrame": 808,
+      "endFrame": 842,
+      "sceneId": "wordB",
+      "isKeyword": true
+    },
+    {
+      "text": "có người nhận ngay phía",
+      "startFrame": 842,
+      "endFrame": 876,
+      "sceneId": "wordB",
+      "isKeyword": false
+    },
+    {
+      "text": "sau nhé!",
+      "startFrame": 876,
+      "endFrame": 910,
+      "sceneId": "wordB",
+      "isKeyword": false
+    },
+    {
+      "text": "Chốt lại cho dễ nhớ:",
+      "startFrame": 919,
+      "endFrame": 967,
+      "sceneId": "comparison",
+      "isKeyword": false
+    },
+    {
+      "text": "SAY something, nhưng TELL someone",
+      "startFrame": 967,
+      "endFrame": 1015,
+      "sceneId": "comparison",
+      "isKeyword": true
+    },
+    {
+      "text": "something. SAY lời muốn nói,",
+      "startFrame": 1015,
+      "endFrame": 1063,
+      "sceneId": "comparison",
+      "isKeyword": true
+    },
+    {
+      "text": "TELL người cần nghe. Quá",
+      "startFrame": 1063,
+      "endFrame": 1111,
+      "sceneId": "comparison",
+      "isKeyword": true
+    },
+    {
+      "text": "dễ đúng không?",
+      "startFrame": 1111,
+      "endFrame": 1159,
+      "sceneId": "comparison",
+      "isKeyword": false
+    },
+    {
+      "text": "Thử sức nhé! Did she",
+      "startFrame": 1171,
+      "endFrame": 1198,
+      "sceneId": "quiz",
+      "isKeyword": false
+    },
+    {
+      "text": "_____ you what happened yesterday?",
+      "startFrame": 1198,
+      "endFrame": 1277,
+      "sceneId": "quiz",
+      "isKeyword": true
+    },
+    {
+      "text": "SAY hay TELL?",
+      "startFrame": 1277,
+      "endFrame": 1307,
+      "sceneId": "quiz",
+      "isKeyword": true
+    },
+    {
+      "text": "5... 4... 3... 2... 1...!",
+      "startFrame": 1307,
+      "endFrame": 1354,
+      "sceneId": "quiz",
+      "isKeyword": true
+    },
+    {
+      "text": "Đáp án là TELL!",
+      "startFrame": 1354,
+      "endFrame": 1395,
+      "sceneId": "quiz",
+      "isKeyword": true
+    },
+    {
+      "text": "Vì có YOU ngay phía sau!",
+      "startFrame": 1395,
+      "endFrame": 1436,
+      "sceneId": "quiz",
+      "isKeyword": false
+    },
+    {
+      "text": "Giờ anh có một câu",
+      "startFrame": 1436,
+      "endFrame": 1478,
+      "sceneId": "cta",
+      "isKeyword": false
+    },
+    {
+      "text": "dành riêng cho em nhé!",
+      "startFrame": 1478,
+      "endFrame": 1518,
+      "sceneId": "cta",
+      "isKeyword": false
+    },
+    {
+      "text": "She _____ me that she",
+      "startFrame": 1518,
+      "endFrame": 1563,
+      "sceneId": "cta",
+      "isKeyword": true
+    },
+    {
+      "text": "loved him. SAY hay TELL?",
+      "startFrame": 1563,
+      "endFrame": 1613,
+      "sceneId": "cta",
+      "isKeyword": true
+    },
+    {
+      "text": "Comment đáp án bên dưới",
+      "startFrame": 1613,
+      "endFrame": 1658,
+      "sceneId": "cta",
+      "isKeyword": false
+    },
+    {
+      "text": "cho anh biết nhé! Anh",
+      "startFrame": 1658,
+      "endFrame": 1703,
+      "sceneId": "cta",
+      "isKeyword": false
+    },
+    {
+      "text": "sẽ kiểm tra xem có",
+      "startFrame": 1703,
+      "endFrame": 1743,
+      "sceneId": "cta",
+      "isKeyword": false
+    },
+    {
+      "text": "bao nhiêu người đúng nhé!",
+      "startFrame": 1743,
+      "endFrame": 1783,
+      "sceneId": "cta",
+      "isKeyword": false
+    },
+    {
+      "text": "Đừng nhìn bài người khác!",
+      "startFrame": 1783,
+      "endFrame": 1827,
+      "sceneId": "cta",
+      "isKeyword": false
+    }
+  ],
+  "config": {
+    "aspectRatio": "9:16",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "totalDurationInFrames": 1827,
+    "voice": "Samantha",
+    "showSubtitles": true,
+    "includeMistakeScene": true,
+    "includeQuizScene": true,
+    "ctaText": "Follow for more daily English tips!",
+    "targetAudience": "Vietnamese English learners",
+    "level": "A2-B2",
+    "theme": {
+      "wordAColor": "#1CB0F6",
+      "wordBColor": "#FF9600",
+      "bgColor": "#F7F7F7",
+      "cardBg": "#FFFFFF",
+      "cardBorder": "#E5E5E5",
+      "textPrimary": "#3C3C3C",
+      "textSecondary": "#777777",
+      "accentGlow": "rgba(88, 204, 2, 0.25)",
+      "mistakeColor": "#FF4B4B",
+      "correctColor": "#58CC02"
+    }
+  },
+  "homework": {
+    "question": "She _____ me that she loved him.",
+    "options": [
+      "A. SAY",
+      "B. TELL"
+    ],
+    "instruction": "💬 Comment đáp án bên dưới cho anh biết nhé!",
+    "note": "👀 Anh sẽ kiểm tra xem ai đúng đấy, cấm nhìn trộm!"
+  }
+}

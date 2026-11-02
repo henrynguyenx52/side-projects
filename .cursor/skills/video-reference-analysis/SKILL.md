@@ -1,11 +1,19 @@
 ---
 name: video-reference-analysis
-description: Analyze a public video URL or local video, capture one representative still per distinct scene into reference-image/jobs, and write an image-generation manifest with one prompt per still. Use when the user asks to analyze a video, extract scenes, capture video reference images, or prepare prompts for Flow image generation.
+description: >-
+  Analyze a video and capture scene stills into reference-image/jobs/ for Flow
+  image generation. Apply ONLY when working within the reference-image/ directory
+  or when explicitly requested to analyze video references for image generation pipelines.
+  DO NOT use or apply when developing in remotion/, hyperframes/, or other repositories.
 ---
 
 # Video reference analysis
 
-Turn one video into a self-contained job for `flow-image-generation`. This skill does not generate images.
+> **Repository Scope: `reference-image/` ONLY.**  
+> This skill is strictly scoped to creating reference jobs in `reference-image/jobs/`.  
+> **DO NOT** apply or load this skill when working on `remotion/`, `hyperframes/`, `money-printer/`, or other video development projects.
+
+Turn one video into a self-contained job for image generation. This skill does not generate images.
 
 ## Input
 

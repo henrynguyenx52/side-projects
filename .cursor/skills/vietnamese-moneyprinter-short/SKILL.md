@@ -1,24 +1,26 @@
 ---
 name: vietnamese-moneyprinter-short
 description: >-
-  Build a Vietnamese vertical short with MoneyPrinterTurbo, Pexels footage
-  filmed in Vietnam, and the local ZeroTTS voice quangminh. Use only when the
-  user asks for a Vietnamese short, video tiếng Việt, ghép video, or a short
-  whose spoken lines and captions are Vietnamese. Do not use this skill for
-  an English video. Do not use Remotion, orbital-short, Edge TTS, or
-  character reference photos. HyperFrames is only for an opening hook and a
-  few emphasis words on the finished picture.
+  Build a Vietnamese vertical short strictly within the money-printer repository
+  (MoneyPrinterTurbo) using Pexels footage filmed in Vietnam and local ZeroTTS.
+  Apply ONLY when actively working inside the money-printer/ directory or when the
+  user explicitly specifies MoneyPrinter. NEVER load or use this skill when working
+  in remotion/, hyperframes/, open-montage/, or other repositories.
 ---
 
 # Vietnamese MoneyPrinter short
 
+> **Repository Scope: `money-printer/` ONLY.**  
+> This skill applies strictly and exclusively to tasks executed inside the `money-printer/` repository using MoneyPrinterTurbo.  
+> **DO NOT** apply or load this skill when working in `remotion/`, `hyperframes/`, `open-montage/`, or any other workspace directory. If the user is working on Remotion compositions, React components, or HyperFrames, ignore this skill entirely.
+
 This skill is Vietnamese only. Speech, captions, and on-screen words are Vietnamese. The voice is **quangminh**. A shot that shows a place is filmed in Vietnam.
 
-Do not use this skill for an English video. An English short is a separate skill, without the `vietnamese-` prefix, with English captions and a ZeroTTS voice other than quangminh. The engine is still ZeroTTS. Never use Edge TTS for either language.
+Do not use this skill for an English video. An English short is a separate skill, without the `vietnamese-` prefix, with English captions and a ZeroTTS voice other than quangminh.
 
 Vertical 1080×1920. MoneyPrinterTurbo cuts and joins real clips. One spoken line is one clip. The line describes what that clip shows.
 
-Do not use Remotion, the orbital-short skill, a whiteboard, Edge TTS, or photos from `reference-image/`. HyperFrames may add an opening hook and a few emphasis words. It does not replace the MoneyPrinter cut.
+Within this MoneyPrinter workflow, do not use Remotion compositions, whiteboard animations, or character photos from `reference-image/`. HyperFrames may add an opening hook and a few emphasis words. It does not replace the MoneyPrinter cut.
 
 ## Layout
 
