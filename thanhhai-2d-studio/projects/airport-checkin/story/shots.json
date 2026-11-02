@@ -1,0 +1,13 @@
+{
+  "title": "English at the Airport: Check-in",
+  "duration": 32,
+  "shots": [
+    {"id":"s001","start":0,"end":3.5,"line":"English at the airport: checking in","scene":"airport establishing shot","in":{"type":"fade","dur":0.4}},
+    {"id":"s002","start":3.5,"end":8.5,"line":"Good morning. I'd like to check in for my flight to London.","scene":"traveler walks to counter and speaks","in":{"type":"cut"}},
+    {"id":"s003","start":8.5,"end":12.5,"line":"May I see your passport, please?","scene":"agent asks for passport","in":{"type":"cut"}},
+    {"id":"s004","start":12.5,"end":16.5,"line":"Of course. Here you are.","scene":"passport handoff close-up","in":{"type":"cut"}},
+    {"id":"s005","start":16.5,"end":21.5,"line":"Do you have any bags to check?","scene":"agent gestures toward baggage scale","in":{"type":"cut"}},
+    {"id":"s006","start":21.5,"end":26.5,"line":"Yes, one suitcase. Please place it on the scale.","scene":"traveler lifts suitcase onto scale","in":{"type":"cut"}},
+    {"id":"s007","start":26.5,"end":32,"line":"Key phrases","scene":"animated phrase recap","in":{"type":"dip","dur":0.4}}
+  ]
+}

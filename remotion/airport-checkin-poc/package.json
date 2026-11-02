@@ -10,6 +10,8 @@
     "dev": "remotion studio",
     "render": "remotion render FullAirportJourney out/full-airport-journey.mp4",
     "render:sample": "remotion render AirportCheckIn out/airport-checkin.mp4",
+    "render:rig": "remotion render RiggedCheckInSample out/rigged-checkin-sample.mp4",
+    "still:rig": "remotion still RiggedCheckInSample out/rigged-checkin-frame.png --frame=320",
     "still": "remotion still AirportCheckIn out/airport-checkin.png --frame=150",
     "lint": "eslint src && tsc"
   },

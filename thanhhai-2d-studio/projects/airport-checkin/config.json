@@ -1,0 +1,15 @@
+{
+  "title": "English at the Airport: Check-in",
+  "aspect": "16:9",
+  "resolution": "720p",
+  "fps": 24,
+  "style": "dusk",
+  "duration": 32,
+  "captions": false,
+  "bars": null,
+  "fadeIn": 0.4,
+  "fadeOut": 0.7,
+  "music": { "enabled": false },
+  "sfx": { "enabled": false },
+  "loudness": -14
+}
