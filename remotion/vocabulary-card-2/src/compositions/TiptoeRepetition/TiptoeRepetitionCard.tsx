@@ -2,7 +2,7 @@ import React from "react";
 import {
   AbsoluteFill,
   Audio,
-  OffthreadVideo,
+  Img,
   interpolate,
   spring,
   staticFile,
@@ -16,20 +16,20 @@ import {
 // 4.19s (126), 4.83s (145), 5.47s (164), 6.11s (183), 6.75s (202), 7.39s (222), 8.03s (241)
 const REPEAT_WORDS = [
   // Top row
-  { text: "tiptoe", x: 420, y: 220, rotation: -3, size: 66, weight: 800, outline: false, beatFrame: 10, color: "#FFFFFF" },
+  { text: "tiptoe", x: 430, y: 220, rotation: -3, size: 66, weight: 800, outline: false, beatFrame: 10, color: "#FFFFFF" },
   { text: "tiptoe", x: 130, y: 240, rotation: -8, size: 58, weight: 800, outline: false, beatFrame: 30, color: "#FFFFFF" },
   { text: "tiptoe", x: 760, y: 230, rotation: 7, size: 62, weight: 900, outline: true, beatFrame: 49, color: "#38BDF8" },
 
-  // Left & Right sides of video card (video card spans left 200 -> right 880)
-  { text: "tiptoe", x: 95, y: 490, rotation: 9, size: 52, weight: 900, outline: true, beatFrame: 68, color: "#38BDF8" },
-  { text: "tiptoe", x: 985, y: 490, rotation: -7, size: 52, weight: 800, outline: false, beatFrame: 87, color: "#FDE047" },
-  { text: "tiptoe", x: 90, y: 730, rotation: -10, size: 54, weight: 800, outline: false, beatFrame: 106, color: "#FFFFFF" },
-  { text: "tiptoe", x: 980, y: 730, rotation: 11, size: 54, weight: 900, outline: true, beatFrame: 126, color: "#FFFFFF" },
+  // Left & Right sides of image (image spans left 210 -> right 870)
+  { text: "tiptoe", x: 105, y: 480, rotation: 9, size: 54, weight: 900, outline: true, beatFrame: 68, color: "#38BDF8" },
+  { text: "tiptoe", x: 975, y: 470, rotation: -7, size: 54, weight: 800, outline: false, beatFrame: 87, color: "#FDE047" },
+  { text: "tiptoe", x: 95, y: 760, rotation: -10, size: 56, weight: 800, outline: false, beatFrame: 106, color: "#FFFFFF" },
+  { text: "tiptoe", x: 980, y: 750, rotation: 11, size: 58, weight: 900, outline: true, beatFrame: 126, color: "#FFFFFF" },
 
-  // Gap between video and bottom card
-  { text: "tiptoe", x: 160, y: 940, rotation: -6, size: 60, weight: 800, outline: false, beatFrame: 145, color: "#93C5FD" },
-  { text: "tiptoe", x: 540, y: 920, rotation: 3, size: 64, weight: 900, outline: true, beatFrame: 164, color: "#FDE047" },
-  { text: "tiptoe", x: 890, y: 940, rotation: -7, size: 58, weight: 800, outline: false, beatFrame: 183, color: "#FFFFFF" },
+  // Gap between image and bottom card (image bottom 920 -> bottom card top ~1250)
+  { text: "tiptoe", x: 160, y: 1020, rotation: -6, size: 60, weight: 800, outline: false, beatFrame: 145, color: "#93C5FD" },
+  { text: "tiptoe", x: 540, y: 1000, rotation: 3, size: 64, weight: 900, outline: true, beatFrame: 164, color: "#FDE047" },
+  { text: "tiptoe", x: 880, y: 1020, rotation: -7, size: 58, weight: 800, outline: false, beatFrame: 183, color: "#FFFFFF" },
 
   // Sides of bottom card
   { text: "tiptoe", x: 75, y: 1260, rotation: 6, size: 52, weight: 900, outline: true, beatFrame: 202, color: "#38BDF8" },
@@ -55,8 +55,7 @@ export const TiptoeRepetitionCard: React.FC = () => {
 
   // 12-second Kokoro am_adam audio (normal speed 1.0, fast intervals, example sentence)
   const audioSrc = staticFile("audio/tiptoe/tiptoe_12s_am_adam.wav");
-  const videoSrc = staticFile("tiptoe_12s.mp4");
-  const bgImageSrc = staticFile("tiptoe_bg.jpg");
+  const tiptoeImageSrc = staticFile("tiptoe.png");
 
   // 1. Gentle Ken Burns background drift
   const bgScale = interpolate(frame, [0, 360], [1.08, 1.18], {
@@ -110,11 +109,11 @@ export const TiptoeRepetitionCard: React.FC = () => {
       {/* ============================================================== */}
       <AbsoluteFill
         style={{
-          backgroundImage: `url(${bgImageSrc})`,
+          backgroundImage: `url(${tiptoeImageSrc})`,
           backgroundSize: "cover",
           backgroundPosition: "center 45%",
           transform: `scale(${bgScale})`,
-          filter: "blur(24px) brightness(0.32)",
+          filter: "blur(28px) brightness(0.24)",
           opacity: 0.92,
         }}
       />
@@ -229,31 +228,35 @@ export const TiptoeRepetitionCard: React.FC = () => {
         </div>
 
         {/* ============================================================== */}
-        {/* CENTER VISUAL: BRIGHT 16:9 VIDEO CARD */}
+        {/* CENTER VISUAL: TIPTOE ILLUSTRATION CARD */}
         {/* ============================================================== */}
         <div
           style={{
             position: "absolute",
-            top: 410,
-            left: 200,
-            width: 680,
-            height: 382.5, // Exact 16:9 ratio (680 / 382.5 = 16/9)
+            top: 360,
+            left: 210,
+            width: 660,
+            height: 560,
             transform: `scale(${entranceSpring})`,
-            borderRadius: "36px",
+            borderRadius: "40px",
             overflow: "hidden",
             border: "6px solid #FFFFFF",
             boxShadow:
               "0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(56, 189, 248, 0.25)",
-            backgroundColor: "#0F172A",
+            backgroundColor: "#FEF0D6",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          {/* High-definition 16:9 Video */}
-          <OffthreadVideo
-            src={videoSrc}
+          {/* Main Visual Image with gentle breathing drift */}
+          <Img
+            src={tiptoeImageSrc}
             style={{
               width: "100%",
               height: "100%",
-              objectFit: "cover",
+              objectFit: "contain",
+              transform: `scale(${interpolate(frame, [0, 360], [1.02, 1.08])})`,
             }}
           />
 
@@ -273,7 +276,7 @@ export const TiptoeRepetitionCard: React.FC = () => {
               gap: "8px",
             }}
           >
-            <span style={{ fontSize: "16px" }}>✨</span>
+            <span style={{ fontSize: "16px" }}>🕵️</span>
             <span
               style={{
                 fontSize: "18px",
@@ -282,22 +285,9 @@ export const TiptoeRepetitionCard: React.FC = () => {
                 letterSpacing: "0.5px",
               }}
             >
-              Quiet Step
+              Stealth Walk
             </span>
           </div>
-
-          {/* Subtle Gradient Shadow at bottom */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: "70px",
-              background:
-                "linear-gradient(to top, rgba(15, 23, 42, 0.5), transparent)",
-            }}
-          />
         </div>
 
         {/* ============================================================== */}

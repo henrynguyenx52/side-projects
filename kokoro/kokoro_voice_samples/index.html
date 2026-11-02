@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kokoro TTS - Voice Comparison Gallery</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.2);
+      --badge-us: #3b82f6;
+      --badge-uk: #8b5cf6;
+      --badge-other: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem 1.5rem;
+      min-height: 100vh;
+    }
+    header {
+      max-width: 1200px;
+      margin: 0 auto 2rem auto;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .sample-text {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--card-border);
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      font-style: italic;
+      color: #cbd5e1;
+      max-width: 800px;
+      margin: 0 auto 1.5rem auto;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+    .filter-btn {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 0.5rem 1.1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 600;
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.25rem;
+    }
+    .voice-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .voice-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      border-color: #475569;
+    }
+    .voice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .voice-name {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .copy-btn {
+      background: transparent;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .copy-btn:hover {
+      background: #334155;
+      color: #fff;
+    }
+    .tags {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .tag {
+      font-size: 0.72rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .tag.us { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+    .tag.uk { background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); }
+    .tag.female { background: rgba(236, 72, 153, 0.2); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.4); }
+    .tag.male { background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.4); }
+    .tag.other { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .tag.star { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    audio {
+      width: 100%;
+      height: 38px;
+      border-radius: 6px;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kokoro TTS Voice Showcase</h1>
+    <p class="subtitle">Listen and compare all voices available in Kokoro-82M</p>
+    <div class="sample-text">
+      "Hello! This is a test sample of Kokoro TTS. I hope you find my voice clear, natural, and pleasant to listen to."
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" onclick="filterVoices('all')">All (54)</button>
+      <button class="filter-btn" onclick="filterVoices('us-female')">US Female (11)</button>
+      <button class="filter-btn" onclick="filterVoices('us-male')">US Male (9)</button>
+      <button class="filter-btn" onclick="filterVoices('uk-female')">UK Female (4)</button>
+      <button class="filter-btn" onclick="filterVoices('uk-male')">UK Male (4)</button>
+      <button class="filter-btn" onclick="filterVoices('other')">Other Languages (26)</button>
+    </div>
+  </header>
+
+  <div class="container" id="gallery"></div>
+
+  <script>
+    const voices = [
+      // US Female
+      { id: "af_heart", name: "Heart ⭐ (Recommended)", group: "us-female", tags: ["us", "female", "star"], path: "af_heart.wav" },
+      { id: "af_bella", name: "Bella", group: "us-female", tags: ["us", "female"], path: "af_bella.wav" },
+      { id: "af_nicole", name: "Nicole", group: "us-female", tags: ["us", "female"], path: "af_nicole.wav" },
+      { id: "af_sarah", name: "Sarah", group: "us-female", tags: ["us", "female"], path: "af_sarah.wav" },
+      { id: "af_sky", name: "Sky", group: "us-female", tags: ["us", "female"], path: "af_sky.wav" },
+      { id: "af_alloy", name: "Alloy", group: "us-female", tags: ["us", "female"], path: "af_alloy.wav" },
+      { id: "af_aoede", name: "Aoede", group: "us-female", tags: ["us", "female"], path: "af_aoede.wav" },
+      { id: "af_jessica", name: "Jessica", group: "us-female", tags: ["us", "female"], path: "af_jessica.wav" },
+      { id: "af_kore", name: "Kore", group: "us-female", tags: ["us", "female"], path: "af_kore.wav" },
+      { id: "af_nova", name: "Nova", group: "us-female", tags: ["us", "female"], path: "af_nova.wav" },
+      { id: "af_river", name: "River", group: "us-female", tags: ["us", "female"], path: "af_river.wav" },
+
+      // US Male
+      { id: "am_adam", name: "Adam", group: "us-male", tags: ["us", "male"], path: "am_adam.wav" },
+      { id: "am_michael", name: "Michael", group: "us-male", tags: ["us", "male"], path: "am_michael.wav" },
+      { id: "am_echo", name: "Echo", group: "us-male", tags: ["us", "male"], path: "am_echo.wav" },
+      { id: "am_eric", name: "Eric", group: "us-male", tags: ["us", "male"], path: "am_eric.wav" },
+      { id: "am_fenrir", name: "Fenrir", group: "us-male", tags: ["us", "male"], path: "am_fenrir.wav" },
+      { id: "am_liam", name: "Liam", group: "us-male", tags: ["us", "male"], path: "am_liam.wav" },
+      { id: "am_onyx", name: "Onyx", group: "us-male", tags: ["us", "male"], path: "am_onyx.wav" },
+      { id: "am_puck", name: "Puck", group: "us-male", tags: ["us", "male"], path: "am_puck.wav" },
+      { id: "am_santa", name: "Santa", group: "us-male", tags: ["us", "male"], path: "am_santa.wav" },
+
+      // UK Female
+      { id: "bf_emma", name: "Emma", group: "uk-female", tags: ["uk", "female"], path: "bf_emma.wav" },
+      { id: "bf_isabella", name: "Isabella", group: "uk-female", tags: ["uk", "female"], path: "bf_isabella.wav" },
+      { id: "bf_alice", name: "Alice", group: "uk-female", tags: ["uk", "female"], path: "bf_alice.wav" },
+      { id: "bf_lily", name: "Lily", group: "uk-female", tags: ["uk", "female"], path: "bf_lily.wav" },
+
+      // UK Male
+      { id: "bm_george", name: "George", group: "uk-male", tags: ["uk", "male"], path: "bm_george.wav" },
+      { id: "bm_lewis", name: "Lewis", group: "uk-male", tags: ["uk", "male"], path: "bm_lewis.wav" },
+      { id: "bm_daniel", name: "Daniel", group: "uk-male", tags: ["uk", "male"], path: "bm_daniel.wav" },
+      { id: "bm_fable", name: "Fable", group: "uk-male", tags: ["uk", "male"], path: "bm_fable.wav" },
+
+      // Other languages
+      { id: "ef_dora", name: "Dora (Spanish)", group: "other", tags: ["other", "female"], path: "other_languages/ef_dora.wav" },
+      { id: "em_alex", name: "Alex (Spanish)", group: "other", tags: ["other", "male"], path: "other_languages/em_alex.wav" },
+      { id: "em_santa", name: "Santa (Spanish)", group: "other", tags: ["other", "male"], path: "other_languages/em_santa.wav" },
+      { id: "ff_siwis", name: "Siwis (French)", group: "other", tags: ["other", "female"], path: "other_languages/ff_siwis.wav" },
+      { id: "hf_alpha", name: "Alpha (Hindi)", group: "other", tags: ["other", "female"], path: "other_languages/hf_alpha.wav" },
+      { id: "hf_beta", name: "Beta (Hindi)", group: "other", tags: ["other", "female"], path: "other_languages/hf_beta.wav" },
+      { id: "hm_omega", name: "Omega (Hindi)", group: "other", tags: ["other", "male"], path: "other_languages/hm_omega.wav" },
+      { id: "hm_psi", name: "Psi (Hindi)", group: "other", tags: ["other", "male"], path: "other_languages/hm_psi.wav" },
+      { id: "if_sara", name: "Sara (Italian)", group: "other", tags: ["other", "female"], path: "other_languages/if_sara.wav" },
+      { id: "im_nicola", name: "Nicola (Italian)", group: "other", tags: ["other", "male"], path: "other_languages/im_nicola.wav" },
+      { id: "jf_alpha", name: "Alpha (Japanese)", group: "other", tags: ["other", "female"], path: "other_languages/jf_alpha.wav" },
+      { id: "jf_gongitsune", name: "Gongitsune (Japanese)", group: "other", tags: ["other", "female"], path: "other_languages/jf_gongitsune.wav" },
+      { id: "jf_nezumi", name: "Nezumi (Japanese)", group: "other", tags: ["other", "female"], path: "other_languages/jf_nezumi.wav" },
+      { id: "jf_tebukuro", name: "Tebukuro (Japanese)", group: "other", tags: ["other", "female"], path: "other_languages/jf_tebukuro.wav" },
+      { id: "jm_kumo", name: "Kumo (Japanese)", group: "other", tags: ["other", "male"], path: "other_languages/jm_kumo.wav" },
+      { id: "pf_dora", name: "Dora (Portuguese)", group: "other", tags: ["other", "female"], path: "other_languages/pf_dora.wav" },
+      { id: "pm_alex", name: "Alex (Portuguese)", group: "other", tags: ["other", "male"], path: "other_languages/pm_alex.wav" },
+      { id: "pm_santa", name: "Santa (Portuguese)", group: "other", tags: ["other", "male"], path: "other_languages/pm_santa.wav" },
+      { id: "zf_xiaobei", name: "Xiaobei (Chinese)", group: "other", tags: ["other", "female"], path: "other_languages/zf_xiaobei.wav" },
+      { id: "zf_xiaoni", name: "Xiaoni (Chinese)", group: "other", tags: ["other", "female"], path: "other_languages/zf_xiaoni.wav" },
+      { id: "zf_xiaoxiao", name: "Xiaoxiao (Chinese)", group: "other", tags: ["other", "female"], path: "other_languages/zf_xiaoxiao.wav" },
+      { id: "zf_xiaoyi", name: "Xiaoyi (Chinese)", group: "other", tags: ["other", "female"], path: "other_languages/zf_xiaoyi.wav" },
+      { id: "zm_yunjian", name: "Yunjian (Chinese)", group: "other", tags: ["other", "male"], path: "other_languages/zm_yunjian.wav" },
+      { id: "zm_yunxi", name: "Yunxi (Chinese)", group: "other", tags: ["other", "male"], path: "other_languages/zm_yunxi.wav" },
+      { id: "zm_yunxia", name: "Yunxia (Chinese)", group: "other", tags: ["other", "male"], path: "other_languages/zm_yunxia.wav" },
+      { id: "zm_yunyang", name: "Yunyang (Chinese)", group: "other", tags: ["other", "male"], path: "other_languages/zm_yunyang.wav" },
+    ];
+
+    function copyId(id, btn) {
+      navigator.clipboard.writeText(id).then(() => {
+        const orig = btn.innerText;
+        btn.innerText = "Copied!";
+        setTimeout(() => { btn.innerText = orig; }, 1500);
+      });
+    }
+
+    function render(list) {
+      const container = document.getElementById("gallery");
+      container.innerHTML = "";
+      list.forEach(v => {
+        const card = document.createElement("div");
+        card.className = "voice-card";
+        const tagsHtml = v.tags.map(t => `<span class="tag ${t}">${t}</span>`).join(" ");
+        card.innerHTML = `
+          <div class="voice-header">
+            <span class="voice-name">${v.name}</span>
+            <button class="copy-btn" onclick="copyId('${v.id}', this)" title="Copy Voice ID">Copy "${v.id}"</button>
+          </div>
+          <div class="tags">${tagsHtml}</div>
+          <audio controls preload="none" src="${v.path}"></audio>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function filterVoices(group) {
+      document.querySelectorAll(".filter-btn").forEach(btn => btn.classList.remove("active"));
+      event.target.classList.add("active");
+      if (group === "all") {
+        render(voices);
+      } else {
+        render(voices.filter(v => v.group === group));
+      }
+    }
+
+    render(voices);
+  </script>
+</body>
+</html>
+

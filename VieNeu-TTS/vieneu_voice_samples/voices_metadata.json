@@ -1,0 +1,202 @@
+[
+  {
+    "name": "Adam bựa",
+    "filename": "adam_bua.wav",
+    "gender": "male",
+    "region": "Bắc",
+    "featured": 1,
+    "description": "Nam · Bắc · Phong cách tự nhiên"
+  },
+  {
+    "name": "Trúc Ly",
+    "filename": "truc_ly.wav",
+    "gender": "female",
+    "region": "Bắc",
+    "featured": 2,
+    "description": "Nữ · Bắc · Phong cách tự nhiên"
+  },
+  {
+    "name": "Thiện Minh",
+    "filename": "thien_minh.wav",
+    "gender": "male",
+    "region": "Bắc",
+    "featured": 3,
+    "description": "Nam · Bắc · Phong cách kể chuyện"
+  },
+  {
+    "name": "Mai Anh",
+    "filename": "mai_anh.wav",
+    "gender": "female",
+    "region": "Bắc",
+    "featured": 4,
+    "description": "Nữ · Bắc · Phong cách tin tức"
+  },
+  {
+    "name": "Hải Đăng",
+    "filename": "hai_dang.wav",
+    "gender": "male",
+    "region": "Bắc",
+    "featured": 5,
+    "description": "Nam · Bắc · Phong cách tự nhiên"
+  },
+  {
+    "name": "Thùy Dung",
+    "filename": "thuy_dung.wav",
+    "gender": "female",
+    "region": "Nam",
+    "featured": 6,
+    "description": "Nữ · Nam · Phong cách tin tức"
+  },
+  {
+    "name": "Thiền Tâm Đức",
+    "filename": "thien_tam_duc.wav",
+    "gender": "male",
+    "region": "Bắc",
+    "featured": 7,
+    "description": "Nam · Bắc · Phong cách kể chuyện"
+  },
+  {
+    "name": "Ngọc Huyền",
+    "filename": "ngoc_huyen.wav",
+    "gender": "female",
+    "region": "Bắc",
+    "featured": 8,
+    "description": "Nữ · Bắc · Giọng đọc tự nhiên"
+  },
+  {
+    "name": "Quang Sơn",
+    "filename": "quang_son.wav",
+    "gender": "male",
+    "region": "Trung",
+    "featured": 9,
+    "description": "Nam · Trung · Phong cách tự nhiên"
+  },
+  {
+    "name": "Ngọc Trân",
+    "filename": "ngoc_tran.wav",
+    "gender": "female",
+    "region": "Trung",
+    "featured": 10,
+    "description": "Nữ · Trung · Phong cách tự nhiên"
+  },
+  {
+    "name": "Adam",
+    "filename": "adam.wav",
+    "gender": "male",
+    "region": "Nam",
+    "featured": null,
+    "description": "Nam · Nam · Giọng đọc tự nhiên"
+  },
+  {
+    "name": "Kim Thanh",
+    "filename": "kim_thanh.wav",
+    "gender": "female",
+    "region": "Nam",
+    "featured": null,
+    "description": "Nữ · Nam · Phong cách đọc truyện"
+  },
+  {
+    "name": "Minh Triết",
+    "filename": "minh_triet.wav",
+    "gender": "male",
+    "region": "Nam",
+    "featured": null,
+    "description": "Nam · Nam · Phong cách tin tức"
+  },
+  {
+    "name": "Minh Đức",
+    "filename": "minh_duc.wav",
+    "gender": "male",
+    "region": "Bắc",
+    "featured": null,
+    "description": "Nam · Bắc · Phong cách tin tức"
+  },
+  {
+    "name": "Mỹ Duyên",
+    "filename": "my_duyen.wav",
+    "gender": "female",
+    "region": "Nam",
+    "featured": null,
+    "description": "Nữ · Nam · Phong cách đọc truyện"
+  },
+  {
+    "name": "Ngọc Linh",
+    "filename": "ngoc_linh.wav",
+    "gender": "female",
+    "region": "Bắc",
+    "featured": null,
+    "description": "Nữ · Bắc · Phong cách kể chuyện"
+  },
+  {
+    "name": "Phạm Tuyên",
+    "filename": "pham_tuyen.wav",
+    "gender": "male",
+    "region": "Bắc",
+    "featured": null,
+    "description": "Nam · Bắc · Phong cách tự nhiên"
+  },
+  {
+    "name": "Quốc Tuấn",
+    "filename": "quoc_tuan.wav",
+    "gender": "male",
+    "region": "Bắc",
+    "featured": null,
+    "description": "Nam · Bắc · Phong cách tự nhiên"
+  },
+  {
+    "name": "Quỳnh Anh",
+    "filename": "quynh_anh.wav",
+    "gender": "female",
+    "region": "Bắc",
+    "featured": null,
+    "description": "Nữ · Bắc · Phong cách đọc truyện"
+  },
+  {
+    "name": "Thanh Bình",
+    "filename": "thanh_binh.wav",
+    "gender": "male",
+    "region": "Bắc",
+    "featured": null,
+    "description": "Nam · Bắc · Phong cách kể chuyện"
+  },
+  {
+    "name": "Thái Sơn",
+    "filename": "thai_son.wav",
+    "gender": "male",
+    "region": "Nam",
+    "featured": null,
+    "description": "Nam · Nam · Phong cách kể chuyện"
+  },
+  {
+    "name": "Thục Đoan",
+    "filename": "thuc_doan.wav",
+    "gender": "female",
+    "region": "Nam",
+    "featured": null,
+    "description": "Nữ · Nam · Phong cách kể chuyện"
+  },
+  {
+    "name": "Xuân Vĩnh",
+    "filename": "xuan_vinh.wav",
+    "gender": "male",
+    "region": "Bắc",
+    "featured": null,
+    "description": "Nam · Bắc · Phong cách tự nhiên"
+  },
+  {
+    "name": "Đoan Trang",
+    "filename": "doan_trang.wav",
+    "gender": "female",
+    "region": "Bắc",
+    "featured": null,
+    "description": "Nữ · Bắc · Phong cách tự nhiên"
+  },
+  {
+    "name": "Đức Trí",
+    "filename": "duc_tri.wav",
+    "gender": "male",
+    "region": "Nam",
+    "featured": null,
+    "description": "Nam · Nam · Phong cách đọc truyện"
+  }
+]
