@@ -1,0 +1,4 @@
+interface:
+  display_name: "Duolingo Conversation Video"
+  short_description: "Create illustrated dialogue shorts with Kokoro voices"
+  default_prompt: "Use $duolingo-conversation-video to make a 30-second English conversation about ordering coffee, with two Kokoro voices and Duolingo speech bubbles."

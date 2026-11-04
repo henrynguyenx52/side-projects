@@ -7,7 +7,7 @@ import soundfile as sf
 from huggingface_hub import HfApi
 import torch
 
-output_dir = Path("/Users/nguyenhuuhung/Documents/side-projects/kokoro_voice_samples")
+output_dir = Path(__file__).resolve().parent / "kokoro_voice_samples"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 print("Fetching available voices from hexgrad/Kokoro-82M...")

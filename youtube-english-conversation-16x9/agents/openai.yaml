@@ -1,0 +1,5 @@
+interface:
+  display_name: "YouTube English Conversation 16:9"
+  short_description: "Build polished 16:9 English-learning episodes"
+  brand_color: "#58CC02"
+  default_prompt: "Use $youtube-english-conversation-16x9 to create a reusable 16:9 YouTube English conversation episode and upload package."

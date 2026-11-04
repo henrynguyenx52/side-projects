@@ -1,0 +1,15 @@
+{
+  "duration": 13.8,
+  "fps": 30,
+  "speed": 0.94,
+  "speakers": [
+    {"id":"alex","name":"Alex","voice":"am_adam"},
+    {"id":"mia","name":"Mia","voice":"af_heart"}
+  ],
+  "turns": [
+    {"id":"01-alex","speaker":"alex","text":"It's such a sunny day!","start":0.55,"end":3.2},
+    {"id":"02-mia","speaker":"mia","text":"It is! But that wind feels cold.","start":3.2,"end":6.8},
+    {"id":"03-alex","speaker":"alex","text":"Do you think it'll rain?","start":6.8,"end":9.8},
+    {"id":"04-mia","speaker":"mia","text":"Maybe. Look at those dark clouds.","start":9.8,"end":13.8}
+  ]
+}
