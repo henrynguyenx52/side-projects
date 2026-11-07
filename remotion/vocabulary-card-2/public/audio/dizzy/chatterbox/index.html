@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatterbox TTS - 'Dizzy' Voice Gallery</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --badge-us: #3b82f6;
+      --badge-uk: #8b5cf6;
+      --badge-builtin: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem 1.5rem;
+      min-height: 100vh;
+    }
+    header {
+      max-width: 1200px;
+      margin: 0 auto 2rem auto;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+    .filter-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 0.45rem 1rem;
+      border-radius: 9999px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 600;
+      border-color: var(--accent);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.25rem;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .voice-id {
+      font-family: monospace;
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: #fff;
+    }
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-us { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
+    .badge-uk { background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid #8b5cf6; }
+    .badge-builtin { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+    .audio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .audio-label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    audio {
+      width: 100%;
+      height: 36px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Chatterbox TTS - 'Dizzy' Voice Gallery</h1>
+    <p class="subtitle">Comparing word pronunciation and sentence cadence across all Chatterbox voices</p>
+    <div class="filters">
+      <button class="filter-btn active" onclick="filterCards('all')">All Voices (29)</button>
+      <button class="filter-btn" onclick="filterCards('American Male')">American Male (10)</button>
+      <button class="filter-btn" onclick="filterCards('American Female')">American Female (11)</button>
+      <button class="filter-btn" onclick="filterCards('British Male')">British Male (4)</button>
+      <button class="filter-btn" onclick="filterCards('British Female')">British Female (4)</button>
+      <button class="filter-btn" onclick="filterCards('Built-in')">Built-in (1)</button>
+    </div>
+  </header>
+
+  <main class="grid">
+
+    <div class="card" data-category="Built-in">
+      <div class="card-header">
+        <span class="voice-id">default_builtin</span>
+        <span class="badge badge-builtin">Built-in</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.52s)</div>
+        <audio controls preload="none" src="default_builtin_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.08s)</div>
+        <audio controls preload="none" src="default_builtin_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_alloy</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.84s)</div>
+        <audio controls preload="none" src="af_alloy_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.36s)</div>
+        <audio controls preload="none" src="af_alloy_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_aoede</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.76s)</div>
+        <audio controls preload="none" src="af_aoede_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.32s)</div>
+        <audio controls preload="none" src="af_aoede_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_bella</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.66s)</div>
+        <audio controls preload="none" src="af_bella_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.58s)</div>
+        <audio controls preload="none" src="af_bella_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_heart</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.9s)</div>
+        <audio controls preload="none" src="af_heart_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.58s)</div>
+        <audio controls preload="none" src="af_heart_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_jessica</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.9s)</div>
+        <audio controls preload="none" src="af_jessica_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.06s)</div>
+        <audio controls preload="none" src="af_jessica_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_kore</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.84s)</div>
+        <audio controls preload="none" src="af_kore_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (3.32s)</div>
+        <audio controls preload="none" src="af_kore_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_nicole</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.68s)</div>
+        <audio controls preload="none" src="af_nicole_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.96s)</div>
+        <audio controls preload="none" src="af_nicole_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_nova</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.9s)</div>
+        <audio controls preload="none" src="af_nova_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.38s)</div>
+        <audio controls preload="none" src="af_nova_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_river</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.66s)</div>
+        <audio controls preload="none" src="af_river_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.3s)</div>
+        <audio controls preload="none" src="af_river_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_sarah</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.8s)</div>
+        <audio controls preload="none" src="af_sarah_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.6s)</div>
+        <audio controls preload="none" src="af_sarah_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Female">
+      <div class="card-header">
+        <span class="voice-id">af_sky</span>
+        <span class="badge badge-us">American Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.98s)</div>
+        <audio controls preload="none" src="af_sky_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.26s)</div>
+        <audio controls preload="none" src="af_sky_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Male">
+      <div class="card-header">
+        <span class="voice-id">am_adam</span>
+        <span class="badge badge-us">American Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.78s)</div>
+        <audio controls preload="none" src="am_adam_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.5s)</div>
+        <audio controls preload="none" src="am_adam_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Male">
+      <div class="card-header">
+        <span class="voice-id">am_echo</span>
+        <span class="badge badge-us">American Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.4s)</div>
+        <audio controls preload="none" src="am_echo_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.28s)</div>
+        <audio controls preload="none" src="am_echo_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Male">
+      <div class="card-header">
+        <span class="voice-id">am_eric</span>
+        <span class="badge badge-us">American Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.66s)</div>
+        <audio controls preload="none" src="am_eric_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.22s)</div>
+        <audio controls preload="none" src="am_eric_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Male">
+      <div class="card-header">
+        <span class="voice-id">am_fenrir</span>
+        <span class="badge badge-us">American Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.78s)</div>
+        <audio controls preload="none" src="am_fenrir_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.02s)</div>
+        <audio controls preload="none" src="am_fenrir_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Male">
+      <div class="card-header">
+        <span class="voice-id">am_liam</span>
+        <span class="badge badge-us">American Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.8s)</div>
+        <audio controls preload="none" src="am_liam_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.24s)</div>
+        <audio controls preload="none" src="am_liam_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Male">
+      <div class="card-header">
+        <span class="voice-id">am_michael</span>
+        <span class="badge badge-us">American Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.92s)</div>
+        <audio controls preload="none" src="am_michael_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.32s)</div>
+        <audio controls preload="none" src="am_michael_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Male">
+      <div class="card-header">
+        <span class="voice-id">am_onyx</span>
+        <span class="badge badge-us">American Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.84s)</div>
+        <audio controls preload="none" src="am_onyx_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.0s)</div>
+        <audio controls preload="none" src="am_onyx_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Male">
+      <div class="card-header">
+        <span class="voice-id">am_puck</span>
+        <span class="badge badge-us">American Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.76s)</div>
+        <audio controls preload="none" src="am_puck_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.08s)</div>
+        <audio controls preload="none" src="am_puck_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="American Male">
+      <div class="card-header">
+        <span class="voice-id">am_santa</span>
+        <span class="badge badge-us">American Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.96s)</div>
+        <audio controls preload="none" src="am_santa_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.64s)</div>
+        <audio controls preload="none" src="am_santa_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="British Female">
+      <div class="card-header">
+        <span class="voice-id">bf_alice</span>
+        <span class="badge badge-uk">British Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (1.46s)</div>
+        <audio controls preload="none" src="bf_alice_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.62s)</div>
+        <audio controls preload="none" src="bf_alice_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="British Female">
+      <div class="card-header">
+        <span class="voice-id">bf_emma</span>
+        <span class="badge badge-uk">British Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.76s)</div>
+        <audio controls preload="none" src="bf_emma_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.24s)</div>
+        <audio controls preload="none" src="bf_emma_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="British Female">
+      <div class="card-header">
+        <span class="voice-id">bf_isabella</span>
+        <span class="badge badge-uk">British Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.76s)</div>
+        <audio controls preload="none" src="bf_isabella_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.48s)</div>
+        <audio controls preload="none" src="bf_isabella_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="British Female">
+      <div class="card-header">
+        <span class="voice-id">bf_lily</span>
+        <span class="badge badge-uk">British Female</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.74s)</div>
+        <audio controls preload="none" src="bf_lily_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.38s)</div>
+        <audio controls preload="none" src="bf_lily_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="British Male">
+      <div class="card-header">
+        <span class="voice-id">bm_daniel</span>
+        <span class="badge badge-uk">British Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.68s)</div>
+        <audio controls preload="none" src="bm_daniel_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.28s)</div>
+        <audio controls preload="none" src="bm_daniel_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="British Male">
+      <div class="card-header">
+        <span class="voice-id">bm_fable</span>
+        <span class="badge badge-uk">British Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (0.74s)</div>
+        <audio controls preload="none" src="bm_fable_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.58s)</div>
+        <audio controls preload="none" src="bm_fable_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="British Male">
+      <div class="card-header">
+        <span class="voice-id">bm_george</span>
+        <span class="badge badge-uk">British Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (1.04s)</div>
+        <audio controls preload="none" src="bm_george_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.88s)</div>
+        <audio controls preload="none" src="bm_george_sentence.wav"></audio>
+      </div>
+    </div>
+
+    <div class="card" data-category="British Male">
+      <div class="card-header">
+        <span class="voice-id">bm_lewis</span>
+        <span class="badge badge-uk">British Male</span>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Word: <strong>"Dizzy."</strong> (1.0s)</div>
+        <audio controls preload="none" src="bm_lewis_word.wav"></audio>
+      </div>
+      <div class="audio-group">
+        <div class="audio-label">Sentence: <em>"I feel dizzy and need to sit down."</em> (2.12s)</div>
+        <audio controls preload="none" src="bm_lewis_sentence.wav"></audio>
+      </div>
+    </div>
+
+  </main>
+  <script>
+    function filterCards(cat) {
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(cat.toLowerCase()));
+      });
+      document.querySelectorAll('.card').forEach(card => {
+        if (cat === 'all' || card.getAttribute('data-category') === cat) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -16,7 +16,7 @@ build/
 dist/
 
 # Generated media and weights. GitHub rejects files over 100MB.
-models/
+/models/
 checkpoints/
 outputs/*
 !outputs/.gitkeep
