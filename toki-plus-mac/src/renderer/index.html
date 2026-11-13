@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Content-Security-Policy (defense-in-depth). Goals:
+         • script-src has NO remote origin and NO 'unsafe-eval' → an injected
+           XSS payload cannot pull an attacker's script from a CDN or eval().
+           'unsafe-inline' is kept ONLY because the UI uses inline onclick=
+           handlers; removing it would need a full event-delegation refactor.
+         • object-src 'none', base-uri 'self', frame-src 'none' → block plugin,
+           <base> hijack, and injected iframes.
+         • img/media allow file:/https:/blob:/data: so result previews (local
+           output files + Roboneo CDN) render; connect-src is limited.
+       This shrinks the blast radius of any DOM-injection bug. -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' data: https://fonts.gstatic.com;
+    img-src 'self' data: blob: file: https:;
+    media-src 'self' data: blob: file: https:;
+    connect-src 'self' https:;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'none';
+    frame-src 'none';
+  ">
+  <title>Motion Toki</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="utils/i18n.js"></script>
+  <script src="utils/theme.js"></script>
+</head>
+<body>
+<div id="toastContainer"></div>
+
+<!-- ═══ ACTIVATION MODAL ═══
+     Full-page block when license state ∈ {none, plan_expired, quota_exhausted,
+     token_expired, hardware_mismatch, revoked}. Mounted as a sibling of #app
+     so it overlays the entire UI (z-index 9999) and prevents any interaction
+     with the underlying app while a license is required. (Tasks 12.1 / R7.1) -->
+<div id="activationModal" class="activation-modal" hidden aria-hidden="true" role="dialog" aria-labelledby="activationTitle">
+  <div class="activation-card" role="document">
+    <div class="activation-header">
+      <div class="activation-logo" aria-hidden="true">
+        <img src="../../build/icon.png" alt="">
+      </div>
+      <h2 class="activation-title" id="activationTitle" data-i18n="license.activation.title">Activate Motion Toki</h2>
+      <p class="activation-subtitle" id="activationSubtitle" data-i18n="license.activation.subtitle">Enter the license key you received after purchase.</p>
+    </div>
+
+    <div class="activation-error" id="activationError" hidden role="alert">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span id="activationErrorMsg"></span>
+    </div>
+
+    <form class="activation-form" id="activationForm" onsubmit="return onActivateSubmit(event)" novalidate>
+      <label class="activation-label" for="licenseKeyInput" data-i18n="license.activation.keyLabel">License key</label>
+      <input
+        type="text"
+        id="licenseKeyInput"
+        class="activation-input"
+        placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+        autocomplete="off"
+        autocapitalize="characters"
+        spellcheck="false"
+        maxlength="100"
+        aria-describedby="activationKeyHint"
+      >
+      <div class="activation-hint" id="activationKeyHint" data-i18n="license.activation.keyHint">Nhập license key bạn đã mua</div>
+
+      <button type="submit" class="activation-btn-primary" id="btnActivate">
+        <span class="activation-btn-spinner" id="activationSpinner" hidden aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3-6.7"/></svg>
+        </span>
+        <span data-i18n="license.activation.activateBtn">Activate</span>
+      </button>
+
+      <a href="#" class="activation-buy-link" id="lnkBuyLicense" onclick="onBuyLicenseClick(event)" data-i18n="license.activation.buyLink">Contact to buy license →</a>
+    </form>
+
+    <!-- Update affordance INSIDE the activation modal. The modal overlays the
+         whole app, so without this a user who is forced to upgrade (e.g.
+         token_expired after MIN_APP_VERSION bump) could never reach the normal
+         update banner. This lets them check + download + install from here. -->
+    <div class="activation-update" id="activationUpdate">
+      <div class="activation-update-row">
+        <span class="activation-update-status" id="activationUpdateStatus" data-i18n="license.activation.updateHint">Using an old version? Update here.</span>
+        <button type="button" class="activation-btn-secondary" id="btnActivationUpdate" onclick="onActivationUpdateClick(event)">
+          <span data-i18n="license.activation.updateBtn">Check for update</span>
+        </button>
+      </div>
+      <div class="activation-update-progress" id="activationUpdateProgress" hidden>
+        <div class="activation-update-bar"><div class="activation-update-bar-fill" id="activationUpdateBarFill"></div></div>
+      </div>
+    </div>
+
+    <details class="activation-diag">
+      <summary data-i18n="license.activation.machineInfo">Machine information</summary>
+      <div class="activation-diag-body">
+        <div class="diag-row">
+          <span class="diag-label" data-i18n="license.activation.deviceFp">Device fingerprint:</span>
+          <code class="diag-value" id="diagDeviceFp">—</code>
+        </div>
+        <div class="diag-row">
+          <span class="diag-label" data-i18n="license.activation.machineName">Machine name:</span>
+          <code class="diag-value" id="diagMachineName">—</code>
+        </div>
+        <button type="button" class="activation-btn-secondary" onclick="copyLicenseDiagnostic()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+          </svg>
+          <span data-i18n="license.activation.copyDiag">Copy diagnostic info</span>
+        </button>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div id="app">
+  <!-- ═══ TITLE BAR ═══ -->
+  <div class="titlebar">
+    <div class="titlebar-brand">
+      <div class="titlebar-logo">
+        <img src="../../build/icon.png" alt="Motion Toki">
+      </div>
+      <span class="titlebar-name">MOTION TOKI</span>
+    </div>
+    <div class="titlebar-controls">
+      <button class="lang-toggle" onclick="i18n.toggleLang()" data-i18n-title="titlebar.toggleLang">
+        <span class="lang-toggle-text" id="langToggleLabel">EN</span>
+      </button>
+      <button class="theme-toggle" onclick="toggleTheme()" data-i18n-title="titlebar.toggleTheme">
+        <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="titlebar-btn" onclick="api.minimize()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+      </button>
+      <button class="titlebar-btn" onclick="api.maximize()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="1"/></svg>
+      </button>
+      <button class="titlebar-btn close" onclick="api.close()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN LAYOUT ═══ -->
+  <div class="main-layout">
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sidebar-section" data-i18n="sidebar.overview">Overview</div>
+      <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        <span data-i18n="nav.dashboard">Dashboard</span>
+      </div>
+
+      <div class="sidebar-section" data-i18n="sidebar.production">Production</div>
+
+      <div class="nav-item" data-tab="batch-create" onclick="switchTab('batch-create')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        <span data-i18n="nav.batchCreate">Create Video</span>
+      </div>
+      <div class="nav-item" data-tab="motion-vip" onclick="switchTab('motion-vip')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M9 10h6"/><path d="M12 7v6"/></svg>
+        <span>Motion VIP</span>
+      </div>
+      <div class="nav-item" data-tab="jobs" onclick="switchTab('jobs')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span data-i18n="nav.jobs">Jobs</span>
+      </div>
+
+
+      <div class="sidebar-section" data-i18n="sidebar.system">System</div>
+      <div class="nav-item" data-tab="accounts" onclick="switchTab('accounts')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span data-i18n="nav.accounts">Accounts</span>
+      </div>
+      <div class="nav-item" data-tab="proxies" onclick="switchTab('proxies')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        <span data-i18n="nav.proxies">Proxies</span>
+      </div>
+      <div class="nav-item" data-tab="logs" onclick="switchTab('logs')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <span data-i18n="nav.logs">Logs</span>
+      </div>
+      <div class="nav-item" data-tab="license" onclick="switchTab('license')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span data-i18n="nav.license">License</span>
+      </div>
+      <div class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span data-i18n="nav.settings">Settings</span>
+      </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <main class="content">
+
+      <!-- ═══ UPDATE BANNER (Req 4.1–4.4, 3.1–3.3) ═══ -->
+      <div id="updateBanner" class="update-banner" hidden role="status" aria-live="polite"></div>
+
+      <!-- ═══ DASHBOARD ═══ -->
+      <div class="page active" id="page-dashboard">
+        <div id="dashboardContent"></div>
+      </div>
+
+      <!-- ═══ CREATE (removed — use Batch Create) ═══ -->
+      <!-- page-create section removed -->
+
+
+
+
+
+      <!-- ═══ BATCH CREATE ═══ -->
+      <div class="page" id="page-batch-create">
+        <div class="page-header">
+          <h1 class="page-title" data-i18n="batch.title">Motion</h1>
+          <p class="page-subtitle" data-i18n="batch.subtitle">Synchronize character images with dance reference videos</p>
+        </div>
+        <div id="batchCreateContent"></div>
+
+      </div>
+
+      <!-- ═══ MOTION VIP ═══ -->
+      <div class="page" id="page-motion-vip">
+        <div class="page-header">
+          <h1 class="page-title">Motion VIP</h1>
+          <p class="page-subtitle">Tạo chuyển động từ video mẫu với ảnh phía trước và ảnh phía sau.</p>
+        </div>
+        <div id="motionVipContent"></div>
+      </div>
+
+      <!-- ═══ JOBS ═══ -->
+      <div class="page" id="page-jobs">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h1 class="page-title" data-i18n="jobs.title">Jobs</h1>
+            <p class="page-subtitle" data-i18n="jobs.subtitle">Track your video generation progress</p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn btn-secondary" onclick="resumeQueue()" style="cursor:pointer;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span data-i18n="jobs.wakeQueueBtn">Continue Queue</span>
+            </button>
+            <button class="btn btn-secondary" onclick="refreshJobs()" style="cursor:pointer;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+              <span data-i18n="jobs.refresh">Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter chips -->
+        <div class="jobs-chips">
+          <button class="jobs-chip is-active" data-filter="all" onclick="filterJobs('all')">
+            <span data-i18n="jobs.filter.all">All</span>
+            <span class="jobs-chip-count" id="jobsCount-all">0</span>
+          </button>
+          <button class="jobs-chip" data-filter="running" onclick="filterJobs('running')">
+            <span class="jobs-chip-dot running"></span>
+            <span data-i18n="jobs.filter.running">Running</span>
+            <span class="jobs-chip-count" id="jobsCount-running">0</span>
+          </button>
+          <button class="jobs-chip" data-filter="completed" onclick="filterJobs('completed')">
+            <span class="jobs-chip-dot completed"></span>
+            <span data-i18n="jobs.filter.completed">Completed</span>
+            <span class="jobs-chip-count" id="jobsCount-completed">0</span>
+          </button>
+          <button class="jobs-chip" data-filter="failed" onclick="filterJobs('failed')">
+            <span class="jobs-chip-dot failed"></span>
+            <span data-i18n="jobs.filter.failed">Failed</span>
+            <span class="jobs-chip-count" id="jobsCount-failed">0</span>
+          </button>
+          <button class="jobs-chip" data-filter="motion" onclick="filterJobs('motion')">
+            <span class="jobs-chip-dot" style="background: #3b82f6;"></span>
+            <span data-i18n="jobs.filter.motion">Video Motion</span>
+            <span class="jobs-chip-count" id="jobsCount-motion">0</span>
+          </button>
+          <span class="jobs-chips-divider"></span>
+
+          <button class="jobs-chip" data-date="today" onclick="filterJobsByDate('today')">
+            <span data-i18n="jobs.date.today">Today</span>
+            <span class="jobs-chip-count" id="jobsCount-today">0</span>
+          </button>
+          <button class="jobs-chip" data-date="7d" onclick="filterJobsByDate('7d')">
+            <span data-i18n="jobs.date.last7">7 days</span>
+            <span class="jobs-chip-count" id="jobsCount-7d">0</span>
+          </button>
+          <button class="jobs-chip" data-date="30d" onclick="filterJobsByDate('30d')">
+            <span data-i18n="jobs.date.last30">30 days</span>
+            <span class="jobs-chip-count" id="jobsCount-30d">0</span>
+          </button>
+
+          <button class="jobs-chip" id="advFilterBtn" onclick="openAdvFilterModal()" style="display:flex; align-items:center; gap:6px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.8;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span data-i18n="jobs.filter.advanced">Bộ lọc nâng cao</span>
+            <span id="advFilterActiveBadge" class="jobs-chip-count" style="display:none; background:var(--purple); color:white; border-radius:10px; padding: 1px 6px; font-weight: bold; font-size:10px;">0</span>
+          </button>
+
+          <div class="jobs-cleanup-wrap" style="margin-left:auto;">
+            <button class="jobs-chip jobs-chip-danger" id="jobsCleanupBtn" onclick="toggleJobsCleanupMenu(event)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+              <span data-i18n="jobs.cleanup">Clean up</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="jobs-cleanup-menu" id="jobsCleanupMenu" role="menu">
+              <button class="jobs-cleanup-item" onclick="cleanupJobs('completed')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span data-i18n="jobs.cleanup.completed">Delete completed</span>
+              </button>
+              <button class="jobs-cleanup-item" onclick="cleanupJobs('failed')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                <span data-i18n="jobs.cleanup.failed">Delete failed</span>
+              </button>
+              <div class="jobs-cleanup-divider"></div>
+              <button class="jobs-cleanup-item is-danger" onclick="cleanupJobs('all')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                <span data-i18n="jobs.cleanup.all">Delete all</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="jobsList">
+          <div class="empty-state" style="padding:60px;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <h3 style="margin-top:12px;" data-i18n="jobs.empty.title">No jobs yet</h3>
+            <p data-i18n="jobs.empty.subtitle">Create a video to see jobs here</p>
+          </div>
+        </div>
+        <div id="jobsPagination" class="jobs-pagination"></div>
+      </div>
+
+      <!-- ═══ PROXIES ═══ -->
+      <div class="page" id="page-proxies">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h1 class="page-title" style="margin:0;" data-i18n="proxies.title">Proxy Manager</h1>
+            <p class="page-subtitle" data-i18n="proxies.subtitle">Add and check status of proxies for concurrent video generation</p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn btn-secondary" onclick="openProxySettingsModal()" id="btnProxySettings" style="cursor:pointer;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0015 19.4a1.7 1.7 0 00-1 .6 1.7 1.7 0 00-.4 1.1V21h-4v-.09A1.7 1.7 0 008.6 19.4a1.7 1.7 0 00-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-.6-1 1.7 1.7 0 00-1.1-.4H3v-4h.09A1.7 1.7 0 004.6 8.6a1.7 1.7 0 00-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-.6 1.7 1.7 0 00.4-1.1V3h4v.09A1.7 1.7 0 0015.4 4.6a1.7 1.7 0 001.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0019.4 9c.16.36.37.7.6 1 .28.3.67.45 1.1.4h.09v4h-.09a1.7 1.7 0 00-1.7.6z"/></svg>
+              <span data-i18n="proxies.settings.button">Usage settings</span>
+            </button>
+            <button class="btn btn-secondary" onclick="checkAllProxies()" id="btnCheckAllProxies" style="cursor:pointer;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span data-i18n="proxies.checkAll">Check all health</span>
+            </button>
+            <button class="btn btn-primary" onclick="openProxyImportModal()" style="cursor:pointer;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span data-i18n="proxies.import">Import Proxies</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 0; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 20px;">
+          <table class="accounts-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02);">
+                <th style="padding: 14px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;" data-i18n="proxies.col.host">Host IP</th>
+                <th style="padding: 14px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;" data-i18n="proxies.col.port">Port</th>
+                <th style="padding: 14px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;" data-i18n="proxies.col.auth">Credentials</th>
+                <th style="padding: 14px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;" data-i18n="proxies.col.status">Status</th>
+                <th style="padding: 14px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;" data-i18n="proxies.col.latency">Latency</th>
+                <th style="padding: 14px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;" data-i18n="proxies.col.lastChecked">Last Checked</th>
+                <th style="padding: 14px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; text-align: right;" data-i18n="proxies.col.actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="proxyListBody">
+              <!-- Rendered via proxies.js -->
+            </tbody>
+          </table>
+          <div id="proxyEmptyState" class="empty-state" style="padding: 60px; display: none;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.3;"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/></svg>
+            <h3 style="margin-top:12px;" data-i18n="proxies.empty.title">No proxies added</h3>
+            <p data-i18n="proxies.empty.subtitle">Import proxy servers to enable concurrent video generation</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PROXY IMPORT MODAL ═══ -->
+      <div class="modal-overlay" id="proxyImportModal">
+        <div class="modal-container" style="max-width: 500px;">
+          <div class="modal-header">
+            <h2 style="font-size:16px; display:flex; align-items:center; gap:10px; margin:0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+              <span data-i18n="proxies.import.title">Import Proxies</span>
+            </h2>
+            <button class="modal-close" onclick="closeProxyImportModal()" style="cursor:pointer;">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;" data-i18n="proxies.import.desc">
+              Format: <code>ip:port</code> or <code>ip:port:user:pass</code>, one proxy per line.
+            </p>
+            <div class="form-group" style="margin-bottom:12px;">
+              <textarea id="proxyImportTextarea" class="form-textarea" rows="8" style="font-family: monospace; font-size:12px; line-height:1.8;" placeholder="38.154.203.95:5863:sqzkyqkc:c5knn6owxtke&#10;45.138.22.10:8000"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeProxyImportModal()" style="cursor:pointer;" data-i18n="common.cancel">Cancel</button>
+            <button class="btn btn-primary" onclick="submitProxyImport()" id="btnSubmitProxyImport" style="cursor:pointer;" data-i18n="common.import">Import</button>
+          </div>
+        </div>
+      </div>
+
+
+
+
+      
+      <!-- ═══ ACCOUNTS ═══ -->
+      <div class="page" id="page-accounts">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <h1 class="page-title" style="margin:0;">Motion Toki API Keys</h1>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn btn-secondary" onclick="refreshAllCarrots()" id="btnRefreshAllCarrots" style="cursor:pointer;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+              <span data-i18n="accounts.syncAll">Sync Credits</span>
+            </button>
+            <button class="btn btn-primary" onclick="openImportModal()" style="cursor:pointer;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span data-i18n="accounts.import">Import</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Compact Stats Strip -->
+        <div class="acc-stats-strip">
+          <div class="acc-stats-item">
+            <span class="acc-stats-num" id="acc-total">0</span>
+            <span class="acc-stats-label" data-i18n="accounts.stat.total">Accounts</span>
+          </div>
+          <span class="acc-stats-sep"></span>
+          <div class="acc-stats-item">
+            <span class="acc-stats-num emerald" id="acc-active">0</span>
+            <span class="acc-stats-label" data-i18n="accounts.stat.active">Active</span>
+          </div>
+          <span class="acc-stats-sep"></span>
+          <div class="acc-stats-item">
+            <span class="acc-stats-num amber" id="acc-credits">0</span>
+            <span class="acc-stats-label" data-i18n="accounts.stat.carrots">Credit</span>
+          </div>
+          <span class="acc-stats-sep"></span>
+          <div class="acc-stats-item">
+            <span class="acc-stats-num blue" id="acc-generated">0</span>
+            <span class="acc-stats-label" data-i18n="accounts.stat.generated">Generated</span>
+          </div>
+        </div>
+
+        <!-- Toolbar: search + filters + sort -->
+        <div class="acc-toolbar">
+          <div class="acc-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" id="accSearch" data-i18n-placeholder="accounts.searchPlaceholder"
+                   placeholder="Search by username…" oninput="onAccSearch()" />
+            <button class="acc-search-clear" id="accSearchClear" onclick="clearAccSearch()" hidden>×</button>
+          </div>
+
+          <div class="acc-filter-tabs" role="tablist" aria-label="Filter accounts by status">
+            <button class="acc-tab is-active" data-filter="all" onclick="setAccFilter('all')">
+              <span data-i18n="accounts.filter.all">All</span>
+              <span class="acc-tab-count" id="accCount-all">0</span>
+            </button>
+            <button class="acc-tab" data-filter="active" onclick="setAccFilter('active')">
+              <span data-i18n="accounts.filter.active">Active</span>
+              <span class="acc-tab-count" id="accCount-active">0</span>
+            </button>
+            <button class="acc-tab" data-filter="error" onclick="setAccFilter('error')">
+              <span data-i18n="accounts.filter.error">Error</span>
+              <span class="acc-tab-count" id="accCount-error">0</span>
+            </button>
+            <button class="acc-tab" data-filter="lowCarrots" onclick="setAccFilter('lowCarrots')">
+              <span data-i18n="accounts.filter.lowCarrots">Low Credits</span>
+              <span class="acc-tab-count" id="accCount-lowCarrots">0</span>
+            </button>
+          </div>
+
+          <div class="acc-sort-wrap">
+            <button class="acc-sort-btn" id="accSortBtn" onclick="toggleAccSortMenu(event)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+              <span id="accSortLabel" data-i18n="accounts.sort.recent">Recent</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="acc-sort-menu" id="accSortMenu" role="menu">
+              <button class="acc-sort-item is-active" data-sort="recent"      onclick="setAccSort('recent')"     data-i18n="accounts.sort.recent">Recent</button>
+              <button class="acc-sort-item"           data-sort="carrotsDesc" onclick="setAccSort('carrotsDesc')" data-i18n="accounts.sort.carrotsDesc">Most carrots</button>
+              <button class="acc-sort-item"           data-sort="carrotsAsc"  onclick="setAccSort('carrotsAsc')"  data-i18n="accounts.sort.carrotsAsc">Least carrots</button>
+              <button class="acc-sort-item"           data-sort="generated"   onclick="setAccSort('generated')"   data-i18n="accounts.sort.generated">Most generated</button>
+              <button class="acc-sort-item"           data-sort="username"    onclick="setAccSort('username')"    data-i18n="accounts.sort.username">Username A→Z</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bulk action bar (only visible when selection > 0) -->
+        <div class="acc-bulkbar" id="accBulkBar" hidden>
+          <div class="acc-bulkbar-info">
+            <span class="acc-bulkbar-count" id="accBulkCount">0</span>
+            <span data-i18n="accounts.selected">selected</span>
+          </div>
+          <div class="acc-bulkbar-actions">
+            <button class="btn-soft" onclick="bulkRefreshCarrots()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+              <span data-i18n="accounts.bulk.sync">Sync Credits</span>
+            </button>
+            <button class="btn-soft" onclick="bulkSetStatus('active')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              <span data-i18n="accounts.bulk.activate">Activate</span>
+            </button>
+            <button class="btn-soft" onclick="bulkSetStatus('inactive')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              <span data-i18n="accounts.bulk.deactivate">Deactivate</span>
+            </button>
+            <div class="acc-delete-wrap">
+              <button class="btn-soft btn-soft-danger" id="accBulkDeleteBtn" onclick="handleBulkDeleteClick(event)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                <span data-i18n="accounts.bulk.delete">Delete</span>
+                <svg id="accBulkDeleteCaret" hidden width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="acc-delete-menu" id="accDeleteMenu">
+                <button onclick="deleteAllAccountsFromMenu()" data-i18n="accounts.deleteMenu.all">Delete all</button>
+                <button onclick="openCarrotDeleteModal('below')" data-i18n="accounts.deleteMenu.below">Delete accounts below…</button>
+                <button onclick="openCarrotDeleteModal('above')" data-i18n="accounts.deleteMenu.above">Delete accounts above…</button>
+              </div>
+            </div>
+            <button class="btn-soft" onclick="clearAccSelection()" data-i18n="accounts.bulk.clear">Clear</button>
+          </div>
+        </div>
+
+        <!-- Account list card -->
+        <div class="card acc-list-card" id="accListCard">
+          <div class="acc-list-header">
+            <label class="acc-checkbox-wrap" title="Select all">
+              <input type="checkbox" id="accSelectAll" onchange="toggleAccSelectAll(this.checked)" />
+              <span class="acc-checkbox-box"></span>
+            </label>
+            <span class="acc-col-username" data-i18n="accounts.col.account">Account</span>
+            <span class="acc-col-carrots" data-i18n="accounts.col.carrots">Credit</span>
+            <span class="acc-col-status" data-i18n="accounts.col.status">Status</span>
+            <span class="acc-col-generated" data-i18n="accounts.col.generated">Generated</span>
+            <span class="acc-col-actions"></span>
+          </div>
+          <div id="accountTable" class="acc-list-body">
+            <div class="empty-state" style="padding:60px;">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity:0.15;"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              <h3 style="margin-top:16px; font-size:15px; color:var(--text-secondary);" data-i18n="accounts.empty.title">No accounts imported</h3>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Click Import to add Motion Toki API keys</p>
+            </div>
+          </div>
+          <div class="acc-list-footer" id="accListFooter" hidden>
+            <span id="accListFooterText"></span>
+            <button class="btn-ghost" onclick="deleteAllAccounts()">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+              <span data-i18n="accounts.deleteAll">Delete All</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ IMPORT MODAL ═══ -->
+      <div class="modal-overlay" id="importModal">
+        <div class="modal-container">
+          <div class="modal-header">
+            <h2 style="font-size:16px; display:flex; align-items:center; gap:10px; margin:0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span data-i18n="import.title">Import Accounts</span>
+            </h2>
+            <button class="modal-close" onclick="closeImportModal()" style="cursor:pointer;">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div style="display:flex; gap:0; margin-bottom:20px; border-bottom:1px solid var(--border);">
+              <button class="modal-tab active" data-modal-tab="paste" onclick="switchImportTab('paste')" style="cursor:pointer;" data-i18n="import.tab.paste">Paste Text</button>
+              <button class="modal-tab" data-modal-tab="file" onclick="switchImportTab('file')" style="cursor:pointer;" data-i18n="import.tab.file">Upload File</button>
+            </div>
+            <div class="modal-tab-content" id="importTab-paste">
+              <div class="form-group" style="margin-bottom:12px;">
+                <textarea class="form-textarea" id="accountImportText" rows="8" placeholder="TOKI-ACC-xxxxxxxxxxxxxxxxxxxx&#10;TOKI-ACC-yyyyyyyyyyyyyyyyyyyy&#10;TOKI-ACC-zzzzzzzzzzzzzzzzzzzz" style="font-family:var(--font-display); font-size:12px; line-height:1.8;"></textarea>
+              </div>
+              <div style="background:var(--bg-tertiary); border-radius:var(--radius-md); padding:12px 16px; font-size:11px; color:var(--text-muted); line-height:1.6; border:1px solid var(--border);">
+                <strong style="color:var(--text-secondary);" data-i18n="import.format">Format:</strong>
+                <code style="background:var(--bg-primary); padding:1px 6px; border-radius:3px; margin-left:4px;">TOKI-ACC-... (1 mã tài khoản / dòng)</code><br>
+                <span style="color:var(--amber); font-size:10px;">Chỉ chấp nhận mã tài khoản đã mã hóa độc quyền TOKI-ACC-...</span><br>
+                <span data-i18n="import.formatHint">Lines starting with # are ignored · Duplicates auto-skipped</span>
+              </div>
+            </div>
+            <div class="modal-tab-content" id="importTab-file" style="display:none;">
+              <div class="upload-zone" id="dropImportFile" onclick="importAccountsFile()" style="cursor:pointer; text-align:center; padding:48px 24px; border:2px dashed var(--border); border-radius:var(--radius-lg); transition:all 150ms;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:12px; opacity:0.5;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <h3 style="font-size:14px; margin-bottom:4px; color:var(--text-secondary);" data-i18n="import.dropFile">Click to browse file</h3>
+                <p style="font-size:12px; color:var(--text-muted);" data-i18n="import.fileTypes">Supports .txt and .csv files</p>
+              </div>
+            </div>
+            <div id="importResult" style="margin-top:16px; font-size:12px; min-height:20px;"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeImportModal()" style="cursor:pointer;" data-i18n="import.cancel">Cancel</button>
+            <button class="btn btn-primary" id="btnDoImport" onclick="importAccountsText()" style="cursor:pointer;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span data-i18n="import.confirm">Import</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="proxySettingsModal">
+        <div class="modal-container" style="max-width:540px;">
+          <div class="modal-header">
+            <div><h2 style="font-size:16px;margin:0;" data-i18n="proxies.settings.title">How the app uses proxies</h2><p style="font-size:11px;color:var(--text-muted);margin:4px 0 0;" data-i18n="proxies.settings.subtitle">A running job keeps its proxy to avoid changing IP midway.</p></div>
+            <button class="modal-close" onclick="closeProxySettingsModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group"><label class="form-label" data-i18n="proxies.settings.mode">Proxy assignment for new jobs</label><select class="form-select" id="proxyAssignmentMode" onchange="renderProxySettingsFields()"><option value="round_robin" data-i18n="proxies.settings.roundRobin">Sequential rotation — recommended</option><option value="random" data-i18n="proxies.settings.random">Random per job</option><option value="job_count" data-i18n="proxies.settings.jobCount">Rotate by job count</option><option value="sticky" data-i18n="proxies.settings.sticky">Keep using one proxy</option></select><small id="proxyModeHelp" class="proxy-settings-help"></small></div>
+            <div class="form-group" id="proxyJobsField"><label class="form-label" data-i18n="proxies.settings.jobsLabel">Rotate after this many jobs</label><input class="form-input" id="proxyJobsPerRotation" type="number" min="1" max="10000" value="15" /></div>
+            <div class="form-group"><label class="form-label" data-i18n="proxies.settings.reuseLabel">Allow proxy reuse after (minutes)</label><input class="form-input" id="proxyReuseMinutes" type="number" min="0" max="10080" value="60" /><small class="proxy-settings-help" data-i18n="proxies.settings.reuseHelp">A rested proxy can be selected again after this time.</small></div>
+            <label class="proxy-fallback-option"><input id="proxyAllowDirectFallback" type="checkbox" /><span><strong data-i18n="proxies.settings.fallback">Allow real IP when no live proxy remains</strong><small data-i18n="proxies.settings.fallbackHelp">Jobs continue directly instead of stopping.</small></span></label>
+          </div>
+          <div class="modal-footer"><button class="btn btn-secondary" onclick="closeProxySettingsModal()" data-i18n="common.cancel">Cancel</button><button class="btn btn-primary" onclick="saveProxySettings()" data-i18n="proxies.settings.save">Save settings</button></div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="carrotDeleteModal">
+        <div class="modal-container" style="max-width:420px;">
+          <div class="modal-header">
+            <h2 id="carrotDeleteTitle" style="font-size:16px; margin:0;"></h2>
+            <button class="modal-close" onclick="closeCarrotDeleteModal()" style="cursor:pointer;">&times;</button>
+          </div>
+          <div class="modal-body">
+            <label id="carrotDeleteLabel" style="display:block; margin-bottom:8px; font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;"></label>
+            <input class="form-input carrot-delete-input" id="carrotDeleteThreshold" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" oninput="sanitizeCarrotDeleteThreshold(this)" onkeydown="handleCarrotDeleteKeydown(event)" />
+            <div id="carrotDeleteMatchCount" style="margin-top:9px; font-size:11px; color:var(--text-muted);"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeCarrotDeleteModal()" data-i18n="import.cancel">Cancel</button>
+            <button class="btn btn-danger" id="carrotDeleteConfirm" onclick="confirmCarrotThresholdDelete()" data-i18n="accounts.bulk.delete">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ LOGS ═══ -->
+      <div class="page" id="page-logs">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <h1 class="page-title" data-i18n="logs.title">Logs</h1>
+            <p class="page-subtitle" data-i18n="logs.subtitle">System activity and event monitoring</p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" onclick="clearLogs()" style="cursor:pointer;" data-i18n="logs.clear">Clear</button>
+            <button class="btn btn-secondary" onclick="exportLogs()" style="cursor:pointer;" data-i18n="logs.export">Export</button>
+          </div>
+        </div>
+        <div class="card" style="padding:0;">
+          <div style="display:flex; gap:8px; padding:12px 16px; border-bottom:1px solid var(--border);">
+            <select class="form-select" id="logLevelFilter" style="width:auto; font-size:12px; padding:6px 10px;" onchange="renderLogs()">
+              <option value="" data-i18n="logs.allLevels">All Levels</option>
+              <option value="info" data-i18n="logs.info">Info</option>
+              <option value="warn" data-i18n="logs.warn">Warning</option>
+              <option value="error" data-i18n="logs.error">Error</option>
+              <option value="success" data-i18n="logs.success">Success</option>
+            </select>
+            <input class="form-input" id="logSearch" data-i18n-placeholder="logs.search" placeholder="Search logs..." style="font-size:12px; padding:6px 10px; flex:1;" oninput="renderLogs()" />
+          </div>
+          <div id="logContainer" style="max-height:calc(100vh - 280px); overflow-y:auto; font-family:var(--font-display); font-size:11px; padding:8px;">
+            <p style="color:var(--text-muted); padding:20px; text-align:center; font-family:var(--font-body);" data-i18n="logs.empty">No logs yet.</p>
+          </div>
+        </div>
+      </div>
+
+
+
+
+      <!-- ═══ LICENSE ═══ -->
+      <div class="page" id="page-license">
+        <div class="page-header">
+          <h1 class="page-title" data-i18n="license.pageTitle">License</h1>
+          <p class="page-subtitle" data-i18n="settings.licenseDesc">Your activated license, plan, and machine binding.</p>
+        </div>
+        <div class="license-page-grid">
+          <div class="card">
+            <h3 style="margin-bottom:16px; font-size:15px; display:flex; align-items:center; gap:8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span data-i18n="settings.licenseSection">License</span>
+            </h3>
+            <div id="settingsLicenseSection" class="settings-license-section">
+              <p class="settings-license-loading" data-i18n="settings.licenseLoading">Loading license info…</p>
+            </div>
+          </div>
+          <div class="card license-buy-card">
+            <div class="license-buy-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="license-buy-text">
+              <h3 class="license-buy-title" data-i18n="license.buyTitle">Buy or extend license</h3>
+              <p class="license-buy-desc" data-i18n="license.buyDesc">Need a key or a renewal? Message us to get set up quickly.</p>
+            </div>
+            <button class="btn btn-primary" style="cursor:pointer;" onclick="onBuyLicenseClick(event)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span data-i18n="license.buyBtn">Contact Admin</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SETTINGS ═══ -->
+      <div class="page" id="page-settings">
+        <div class="page-header page-header--rich">
+          <div class="page-header-icon" style="background:linear-gradient(135deg, rgba(139,92,246,0.18), rgba(139,92,246,0.04)); color:var(--purple);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </div>
+          <div>
+            <h1 class="page-title" data-i18n="settings.title">Settings</h1>
+            <p class="page-subtitle" data-i18n="settings.subtitle">Configure Motion Toki preferences</p>
+          </div>
+        </div>
+
+        <div class="settings-layout">
+          <!-- Language -->
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <div class="settings-section-icon settings-section-icon--lang">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              </div>
+              <div class="settings-section-heading">
+                <h3 class="settings-section-title" data-i18n="settings.language">Language</h3>
+                <p class="settings-section-desc" data-i18n="settings.languageDesc">Interface display language</p>
+              </div>
+            </div>
+            <div class="settings-section-body">
+              <div class="settings-lang-row">
+                <button class="lang-pick-btn" data-pick-lang="en" onclick="i18n.setLang('en')">
+                  <span class="lang-pick-flag">EN</span>
+                  <span>English</span>
+                </button>
+                <button class="lang-pick-btn" data-pick-lang="vi" onclick="i18n.setLang('vi')">
+                  <span class="lang-pick-flag">VI</span>
+                  <span>Tiếng Việt</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Output -->
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <div class="settings-section-icon settings-section-icon--output">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+              </div>
+              <div class="settings-section-heading">
+                <h3 class="settings-section-title" data-i18n="settings.outputSection">Output</h3>
+                <p class="settings-section-desc" data-i18n="settings.outputDesc">Where generated videos are saved</p>
+              </div>
+            </div>
+            <div class="settings-section-body">
+              <div class="form-group">
+                <label class="form-label" data-i18n="settings.defaultOutputFolder">Default Output Folder</label>
+                <div class="settings-output-row">
+                  <input class="form-input" id="settingsOutputFolder" readonly />
+                  <button class="btn btn-secondary" onclick="changeOutputFolder()" style="cursor:pointer;" data-i18n="settings.browse">Browse</button>
+                  <button class="btn btn-secondary" onclick="openOutputFolder()" style="cursor:pointer;" data-i18n="settings.open">Open</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Pipeline -->
+          <section class="settings-section settings-section--wide">
+            <div class="settings-section-head">
+              <div class="settings-section-icon settings-section-icon--pipeline">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              </div>
+              <div class="settings-section-heading">
+                <h3 class="settings-section-title" data-i18n="settings.pipelineSection">Pipeline</h3>
+                <p class="settings-section-desc" data-i18n="settings.pipelineDesc">Tune parallel video generation</p>
+              </div>
+            </div>
+            <div class="settings-section-body">
+              <div class="form-group">
+                <label class="form-label" for="settingsConcurrency" style="opacity: 0.9;">Số luồng chạy song song (Tự động)</label>
+                <div class="concurrency-input-row">
+                  <input
+                    id="settingsConcurrency"
+                    type="number"
+                    class="form-input"
+                    min="1"
+                    max="50"
+                    step="1"
+                    inputmode="numeric"
+                    style="max-width:120px; background: var(--bg-tertiary); cursor: not-allowed; opacity: 0.7; font-weight: bold; border-color: rgba(255,255,255,0.06);"
+                    disabled
+                  />
+                  <span style="font-size: 12px; color: var(--purple); font-weight: 500; display: flex; align-items: center; margin-left: 10px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Auto-Optimized
+                  </span>
+                </div>
+                <div class="form-help" style="margin-top: 8px; color: var(--text-muted); line-height: 1.5;">
+                  Hệ thống tự động kích hoạt số luồng tối đa bằng đúng số tài khoản <strong>Active</strong> đang có để bảo đảm tốc độ và độ bền bỉ cao nhất. Không cần cấu hình thủ công.
+                </div>
+                <div class="concurrency-system-info" id="concurrencySystemInfo" hidden>
+                  <span class="system-info-chip" id="sysInfoCpu"></span>
+                  <span class="system-info-chip" id="sysInfoRam"></span>
+                </div>
+              </div>
+
+              <div class="settings-toggle-grid">
+              <div class="setting-row">
+                <div class="setting-row-text">
+                  <div class="setting-row-title" data-i18n="settings.autoRetry">Auto-retry transient failures</div>
+                  <div class="setting-row-desc" data-i18n="settings.autoRetryDesc">Automatically retry network errors and 5xx responses with backoff.</div>
+                </div>
+                <label class="switch" for="settingsAutoRetry">
+                  <input type="checkbox" id="settingsAutoRetry" onchange="onAutoRetryToggle(event)" />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-row-text">
+                  <div class="setting-row-title" data-i18n="settings.autoThrottle">Auto-throttle on slow network</div>
+                  <div class="setting-row-desc" data-i18n="settings.autoThrottleDesc">Pause new uploads when bandwidth stays low to avoid clogging your connection.</div>
+                </div>
+                <label class="switch" for="settingsAutoThrottle">
+                  <input type="checkbox" id="settingsAutoThrottle" onchange="onAutoThrottleToggle(event)" />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Update -->
+          <section class="settings-section settings-section--wide">
+            <div class="settings-section-head">
+              <div class="settings-section-icon settings-section-icon--update">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15 6.7L3 16"/></svg>
+              </div>
+              <div class="settings-section-heading">
+                <h3 class="settings-section-title" data-i18n="settings.updateSection">Update</h3>
+                <p class="settings-section-desc" data-i18n="settings.updateDesc">Check for new versions and configure auto-update.</p>
+              </div>
+            </div>
+            <div class="settings-section-body">
+              <div id="settingsUpdateSection" class="settings-update-section">
+                <p style="font-size:13px; color:var(--text-muted);" data-i18n="settings.updateLoading">Loading update info…</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Page modules (load order: utils → pages → app entry) -->
+<script src="utils/utils.js"></script>
+<script src="utils/toast.js"></script>
+<script src="utils/slot-indicator.js"></script>
+<script src="utils/license-banner.js"></script>
+<script src="utils/thumbnail-generator.js"></script>
+<script src="utils/batch-state-functions.js"></script>
+<script src="utils/drag-drop-manager.js"></script>
+<script src="components/update-banner.js"></script>
+<script src="pages/logs.js"></script>
+<script src="pages/dashboard.js"></script>
+
+<script src="pages/batch-create.js"></script>
+<script src="pages/job-advanced-filter.js"></script>
+<script src="pages/jobs.js"></script>
+<script src="pages/accounts.js"></script>
+<script src="pages/proxies.js"></script>
+<script src="pages/settings.js"></script>
+<script src="pages/settings-update.js"></script>
+
+<script src="pages/activation.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

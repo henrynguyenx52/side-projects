@@ -1,0 +1,6 @@
+{
+  "outputDir": "YOUR_OUTPUT_DIR_HERE",
+  "threadCount": 2,
+  "defaultModel": "runninghub-standard",
+  "defaultPrompt": "Create high quality smooth dance video with character matching reference motion perfectly"
+}

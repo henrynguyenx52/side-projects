@@ -1,0 +1,16 @@
+{
+  "name": "toki-plus-studio",
+  "version": "26.7.1",
+  "description": "TOKI PLUS - AI Dance & Motion Studio (localhost Mac port)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "multer": "^2.0.0"
+  }
+}

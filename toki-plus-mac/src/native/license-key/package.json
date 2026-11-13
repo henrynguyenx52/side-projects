@@ -1,0 +1,14 @@
+{
+  "name": "license-key",
+  "version": "1.0.0",
+  "description": "Native Ed25519 public-key holder for the VibeForge license verifier (Task 7.1).",
+  "private": true,
+  "main": "index.js",
+  "gypfile": true,
+  "scripts": {
+    "install": "node-gyp rebuild"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.7.0"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "licenseKey": "YOUR_KEY_HERE",
+  "activatedAt": 0,
+  "expiresAt": 0,
+  "customer": "YOUR_CUSTOMER_HERE",
+  "machineId": "ANY",
+  "plan": "YOUR_PLAN_HERE",
+  "info": {
+    "valid": false,
+    "customer": "YOUR_CUSTOMER_HERE",
+    "machineId": "ANY",
+    "plan": "YOUR_PLAN_HERE",
+    "expiresAt": 0,
+    "daysLeft": 0,
+    "days": 0
+  }
+}

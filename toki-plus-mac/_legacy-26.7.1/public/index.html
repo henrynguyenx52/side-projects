@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TOKI PLUS - AI Dance & Motion Studio</title>
+  <link rel="icon" type="image/png" href="/img/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ════ ACTIVATION MODAL (CHƯA KÍCH HOẠT) ════ -->
+  <div id="activationModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <img src="/img/logo.png" class="modal-logo" alt="TOKI PLUS">
+        <h2 class="modal-title">Kích Hoạt Bản Quyền TOKI PLUS</h2>
+        <p class="modal-subtitle">Vui lòng nhập License Key để bắt đầu sử dụng phần mềm</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Mã Phần Cứng Máy Tính (Hardware ID):</label>
+        <div class="machine-box">
+          <span id="currentHwId" class="machine-id-text">Đang nhận diện...</span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="copyHardwareId()">Sao chép</button>
+        </div>
+        <p style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Gửi mã này cho Admin nếu bạn đăng ký gói khóa theo máy.</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">License Key:</label>
+        <textarea id="activationKeyInput" class="form-textarea" placeholder="Dán License Key (TOKI-...) vào đây..." style="min-height: 90px;"></textarea>
+      </div>
+
+      <div id="activationError" style="display: none; padding: 10px; border-radius: 6px; background: rgba(239, 68, 68, 0.15); color: #f87171; font-size: 12px; border: 1px solid rgba(239, 68, 68, 0.3);"></div>
+
+      <button type="button" class="btn btn-primary btn-lg" onclick="activateLicense()" style="width: 100%;">
+        XÁC THỰC & KÍCH HOẠT
+      </button>
+
+      <!-- Danh sách Key Đã Lưu Trên Máy -->
+      <div id="modalSavedKeysSection" style="display: none; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 700; color: var(--accent);">⭐ Key Đã Lưu Trên Máy Này:</span>
+          <span style="font-size: 11px; color: var(--text-dim);">Bấm để dùng nhanh</span>
+        </div>
+        <div id="modalSavedKeysList" style="display: flex; flex-direction: column; gap: 8px; max-height: 160px; overflow-y: auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ TOP TITLEBAR ════ -->
+  <header class="titlebar">
+    <div class="titlebar-brand">
+      <img src="/img/logo.png" class="titlebar-logo" alt="TOKI PLUS">
+      <span class="titlebar-name">TOKI PLUS</span>
+      <span class="titlebar-tag">MOTION STUDIO v26.7</span>
+    </div>
+
+    <div class="titlebar-actions">
+      <span id="headerNewUpdateBadge" class="badge-new-update" style="display: none;" onclick="showUpdateModal()" title="Có phiên bản mới! Bấm để xem và tải về">
+        🚀 Có bản mới
+      </span>
+      <div id="licenseBadge" class="badge-license badge-inactive">
+        <span id="licenseBadgeDot" style="width: 8px; height: 8px; border-radius: 50%; background: currentColor;"></span>
+        <span id="licenseBadgeText">Kiểm tra bản quyền...</span>
+      </div>
+      <button id="btnHeaderLogoutKey" class="btn btn-outline-danger btn-sm" onclick="logoutLicense()" style="display: none;" title="Đăng xuất / Đổi sang key khác">
+        🔑 Đổi Key
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="openOutputsFolder()">
+        📁 Thư mục video
+      </button>
+    </div>
+  </header>
+
+  <!-- ════ UPDATE NOTIFICATION BANNER ════ -->
+  <div id="updateBanner" class="update-banner" style="display: none;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 18px;">🚀</span>
+      <div>
+        <div style="font-weight: 700; font-size: 13px; color: #fff;">
+          ĐÃ CÓ BẢN CẬP NHẬT MỚI: <span id="updateBannerVersion" style="color: #38bdf8;">v...</span>
+        </div>
+        <div id="updateBannerDesc" style="font-size: 12px; color: #94a3b8;">
+          Cập nhật để tối ưu kết nối và trải nghiệm các tính năng mới nhất.
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <button class="btn btn-primary btn-sm" onclick="showUpdateModal()">🚀 Xem & Tải Về</button>
+      <button class="btn btn-secondary btn-sm" onclick="dismissUpdateBanner()" style="padding: 4px 8px;" title="Đóng thông báo">✕</button>
+    </div>
+  </div>
+
+  <!-- ════ MAIN CONTAINER ════ -->
+  <div class="app-container">
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="nav-section">Tổng Quan</div>
+      <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        <span>Dashboard</span>
+      </div>
+
+      <div class="nav-section">Sản Xuất Video</div>
+      <div class="nav-item" data-tab="motion" onclick="switchTab('motion')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        <span>Tạo Video AI</span>
+      </div>
+      <div class="nav-item" data-tab="jobs" onclick="switchTab('jobs')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Tiến Trình (Jobs)</span>
+        <span id="runningCountBadge" class="nav-badge" style="display: none;">0</span>
+      </div>
+
+      <div class="nav-section">Hệ Thống</div>
+      <div class="nav-item" data-tab="accounts" onclick="switchTab('accounts')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Tài Khoản AI</span>
+      </div>
+      <div class="nav-item" data-tab="license" onclick="switchTab('license')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Bản Quyền</span>
+      </div>
+      
+      
+      <div class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Cài Đặt</span>
+      </div>
+    </nav>
+
+    <!-- CONTENT PAGES -->
+    <main class="content">
+
+      <!-- ═══ 1. DASHBOARD ═══ -->
+      <section id="page-dashboard" class="page active">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Bảng Điều Khiển</h1>
+            <p class="page-desc">Hệ thống tạo video nhảy / chuyển động AI tự động</p>
+          </div>
+          <button class="btn btn-primary" onclick="switchTab('motion')">
+            + Bắt Đầu Tạo Video
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px;">
+          <div style="background: var(--bg-card); padding: 18px; border-radius: var(--radius); border: 1px solid var(--border);">
+            <div style="font-size: 12px; color: var(--text-muted);">Tài khoản AI kết nối</div>
+            <div id="statAccounts" style="font-size: 28px; font-weight: 700; color: #fff; margin-top: 4px;">0</div>
+          </div>
+          <div style="background: var(--bg-card); padding: 18px; border-radius: var(--radius); border: 1px solid var(--border);">
+            <div style="font-size: 12px; color: var(--text-muted);">Số dư Coins khả dụng</div>
+            <div id="statTotalCoins" style="font-size: 28px; font-weight: 700; color: var(--amber); margin-top: 4px;">0</div>
+          </div>
+          <div style="background: var(--bg-card); padding: 18px; border-radius: var(--radius); border: 1px solid var(--border);">
+            <div style="font-size: 12px; color: var(--text-muted);">Tổng video đã tạo</div>
+            <div id="statCompleted" style="font-size: 28px; font-weight: 700; color: var(--green); margin-top: 4px;">0</div>
+          </div>
+          <div style="background: var(--bg-card); padding: 18px; border-radius: var(--radius); border: 1px solid var(--border);">
+            <div style="font-size: 12px; color: var(--text-muted);">Đang thực hiện (Queue)</div>
+            <div id="statRunning" style="font-size: 28px; font-weight: 700; color: var(--cyan); margin-top: 4px;">0</div>
+          </div>
+          <div style="background: var(--bg-card); padding: 18px; border-radius: var(--radius); border: 1px solid var(--border);">
+            <div style="font-size: 12px; color: var(--text-muted);">Trạng thái bản quyền</div>
+            <div id="statLicense" style="font-size: 16px; font-weight: 700; color: var(--accent); margin-top: 8px;">Đang kiểm tra...</div>
+          </div>
+        </div>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px;">
+          <h3 style="font-size: 16px; margin-bottom: 12px; color: #fff;">💡 Hướng dẫn sử dụng nhanh</h3>
+          <ol style="padding-left: 20px; color: var(--text-muted); font-size: 13px; line-height: 2;">
+            <li><strong>Bước 1:</strong> Vào mục <strong>Tài Khoản AI</strong> và thêm API Key Toki Plus của bạn (Hệ thống sẽ tự check số coin).</li>
+            <li><strong>Bước 2:</strong> Vào mục <strong>Tạo Video AI</strong>, tải lên ảnh chân dung nhân vật và video nhảy mẫu.</li>
+            <li><strong>Bước 3:</strong> Chọn kiểu ghép (tự động ghép cặp 1-1, hoặc 1 video cho nhiều ảnh).</li>
+            <li><strong>Bước 4:</strong> Chọn gói render <em>TOKI Standard (24GB)</em> hoặc <em>TOKI AI Plus (48GB)</em> rồi bấm <strong>BẮT ĐẦU TẠO VIDEO</strong>.</li>
+            <li><strong>Bước 5:</strong> Theo dõi tiến độ trong mục <strong>Tiến Trình (Jobs)</strong>. Video khi xong sẽ tự động được tải về máy!</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ═══ 2. MOTION (BATCH CREATE) ═══ -->
+      <section id="page-motion" class="page">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Tạo Video Motion Hàng Loạt</h1>
+            <p class="page-desc">Ghép ảnh nhân vật vào video mẫu chuyển động bằng AI</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" onclick="autoPair1to1()">Tự động ghép 1 - 1</button>
+            <button class="btn btn-secondary" onclick="pairOneVideoToAll()">1 Video nhảy cho Mọi Ảnh</button>
+            <button class="btn btn-danger btn-sm" onclick="clearAllMotion()">Xóa hết</button>
+          </div>
+        </div>
+
+        <div class="batch-layout">
+          <!-- MAIN UPLOAD & PAIRING -->
+          <div class="batch-main">
+            <div class="batch-upload-grid">
+              <!-- Upload Character Images -->
+              <div class="upload-card" id="cardImages" onclick="document.getElementById('inputImages').click()">
+                <input type="file" id="inputImages" multiple accept="image/*" style="display: none;" onchange="handleImageUpload(this.files)">
+                <div class="upload-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                </div>
+                <div class="upload-title">Ảnh Nhân Vật (Character)</div>
+                <div class="upload-hint">Nhấp hoặc kéo thả nhiều ảnh (.jpg, .png, .webp)</div>
+                <div id="listImages" class="upload-file-list" onclick="event.stopPropagation()"></div>
+              </div>
+
+              <!-- Upload Dance Reference Videos -->
+              <div class="upload-card" id="cardVideos" onclick="document.getElementById('inputVideos').click()">
+                <input type="file" id="inputVideos" multiple accept="video/*" style="display: none;" onchange="handleVideoUpload(this.files)">
+                <div class="upload-icon" style="background: rgba(6, 182, 212, 0.15); color: var(--cyan);">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                </div>
+                <div class="upload-title">Video Mẫu Nhảy (Reference)</div>
+                <div class="upload-hint">Nhấp hoặc kéo thả nhiều video (.mp4, .mov, .webm)</div>
+                <div id="listVideos" class="upload-file-list" onclick="event.stopPropagation()"></div>
+              </div>
+            </div>
+
+            <!-- Pairing List Preview -->
+            <div class="pairing-section">
+              <div class="pairing-header">
+                <span class="pairing-title">Danh Sách Cặp Ghép Chuyển Động (<span id="pairingCount">0</span> cặp)</span>
+                <span style="font-size: 12px; color: var(--text-muted);">Tự động render theo thứ tự</span>
+              </div>
+              <div id="pairingsContainer" class="pairing-list">
+                <div style="text-align: center; padding: 40px; color: var(--text-dim);">
+                  Chưa có cặp ghép nào. Hãy tải lên ảnh và video ở trên để tạo cặp!
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SIDEBAR CONFIG PANEL -->
+          <div class="settings-panel">
+            <h3 class="panel-title">Thiết Lập Tạo Video</h3>
+
+            <div class="form-group">
+              <label class="form-label">Gói Workflow AI:</label>
+              <select id="batchModelSelect" class="form-select" onchange="updateCostEstimate()">
+                <option value="runninghub-standard" selected>TOKI PLUS Standard (GPU 24GB) — ~200 Coins/lần (Khuyên dùng)</option>
+                <option value="runninghub-aiplus">TOKI PLUS VIP (GPU 48GB) — ~400 Coins/lần</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Số luồng render song song:</label>
+              <select id="batchThreadSelect" class="form-select" onchange="onBatchThreadChange(this.value)">
+                <option value="1">1 Luồng (Chạy tuần tự)</option>
+                <option value="2" selected>2 Luồng (Khuyên dùng)</option>
+                <option value="3">3 Luồng</option>
+                <option value="4">4 Luồng</option>
+                <option value="5">5 Luồng (Cần ≥ 5 Acc)</option>
+                <option value="6">6 Luồng (Cần ≥ 6 Acc)</option>
+                <option value="7">7 Luồng (Cần ≥ 7 Acc)</option>
+                <option value="8">8 Luồng (Cần ≥ 8 Acc)</option>
+                <option value="9">9 Luồng (Cần ≥ 9 Acc)</option>
+                <option value="10">10 Luồng (Tối đa - Cần ≥ 10 Acc)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Prompt Tùy Biến (Gợi ý mô tả chuyển động):</label>
+              <textarea id="batchGlobalPrompt" class="form-textarea" placeholder="Mô tả chuyển động nếu cần...">Create high quality dance video with character matching reference motion</textarea>
+            </div>
+
+            <!-- Bảng Thông Tin Chi Phí Coins Chi Tiết -->
+            <div class="cost-card" id="costCard">
+              <div class="cost-card-header">
+                <div class="cost-card-title">
+                  <span>💰 Thông Tin Chi Phí Coins:</span>
+                </div>
+                <span id="costBadgeModel" class="cost-badge">TOKI VIP 48GB</span>
+              </div>
+
+              <div class="cost-details">
+                <div class="cost-detail-row">
+                  <span class="cost-detail-label">Chi phí mỗi lần tạo:</span>
+                  <span id="costPerVideoVal" class="cost-detail-val" style="color: var(--cyan); font-weight: 700;">~400 Coins / video</span>
+                </div>
+                <div class="cost-detail-row">
+                  <span class="cost-detail-label">Số video trong lần tạo:</span>
+                  <span id="costVideoCountVal" class="cost-detail-val" style="font-weight: 600;">0 video</span>
+                </div>
+                <div class="cost-detail-row cost-divider-row">
+                  <span class="cost-detail-label" style="font-weight: 600; color: #fff;">Tổng Coins ước tính:</span>
+                  <span id="costTotalEstimateVal" class="cost-total-val">0 Coins</span>
+                </div>
+                <div class="cost-detail-row">
+                  <span class="cost-detail-label">Số dư Coins khả dụng:</span>
+                  <span id="costAvailableCoinsVal" class="cost-detail-val" style="color: var(--green); font-weight: 700;">0 Coins</span>
+                </div>
+              </div>
+
+              <div id="costAlertBox" class="cost-alert-box" style="display: none;"></div>
+
+              <div class="cost-hint-text">
+                📌 Coins được trừ trực tiếp từ tài khoản Toki Plus theo thời gian xử lý thực tế của GPU sau khi render xong.
+              </div>
+            </div>
+
+            <button type="button" id="btnStartBatch" class="btn btn-primary btn-lg" onclick="startBatchJobs()" style="width: 100%; margin-top: 10px;">
+              🚀 BẮT ĐẦU TẠO VIDEO
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ 3. JOBS ═══ -->
+      <section id="page-jobs" class="page">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Quản Lý Tiến Trình (Jobs)</h1>
+            <p class="page-desc">Theo dõi tiến độ tạo video thời gian thực • <span id="jobsCurrentClock" style="color: #38bdf8; font-weight: 600; font-family: 'Consolas', monospace;">🕒 Giờ hiện tại: --:--:--</span></p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" onclick="openOutputsFolder()">📁 Mở Thư Mục Video</button>
+            <button class="btn btn-secondary" onclick="clearCompletedJobs()">🧹 Xóa Tác Vụ Đã Xong</button>
+            <button class="btn btn-secondary" onclick="loadJobs()">🔄 Làm Mới</button>
+          </div>
+        </div>
+
+        <div class="jobs-filter-bar">
+          <div class="chip active" onclick="filterJobs('all', this)">Tất cả (<span id="countAll">0</span>)</div>
+          <div class="chip" onclick="filterJobs('running', this)">Đang xử lý (<span id="countRunning">0</span>)</div>
+          <div class="chip" onclick="filterJobs('completed', this)">Đã xong (<span id="countCompleted">0</span>)</div>
+          <div class="chip" onclick="filterJobs('failed', this)">Thất bại (<span id="countFailed">0</span>)</div>
+        </div>
+
+        <div id="jobsContainer" class="jobs-list">
+          <div style="text-align: center; padding: 60px; color: var(--text-dim);">
+            Chưa có tác vụ nào trong danh sách.
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ 4. ACCOUNTS ═══ -->
+      <section id="page-accounts" class="page">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Tài Khoản AI Toki Plus</h1>
+            <p class="page-desc">Quản lý danh sách API Key và kiểm tra số dư Carrots / RH Coins</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-primary" onclick="showAddBulkModal()">📋 Thêm Hàng Loạt (Mỗi dòng 1 Acc)</button>
+            <button class="btn btn-secondary" onclick="showAddAccountModal()">+ Thêm 1 Tài Khoản</button>
+            <button class="btn btn-secondary" onclick="checkAllAccountsBalance()">🔄 Kiểm Tra Tất Cả</button>
+          </div>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>TÊN TÀI KHOẢN</th>
+              <th>API KEY</th>
+              <th>SỐ DƯ COINS</th>
+              <th>TRẠNG THÁI</th>
+              <th>KIỂM TRA LẦN CUỐI</th>
+              <th style="text-align: right;">THAO TÁC</th>
+            </tr>
+          </thead>
+          <tbody id="accountsTableBody">
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-dim);">Chưa có tài khoản nào. Hãy bấm "Thêm Tài Khoản Mới".</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ═══ 5. LICENSE INFO ═══ -->
+      <section id="page-license" class="page">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Thông Tin Bản Quyền Phần Mềm</h1>
+            <p class="page-desc">Chi tiết gói kích hoạt, đếm ngược thời gian và quản lý key</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button id="btnPageLogoutKey" class="btn btn-outline-danger" onclick="logoutLicense()" style="display: none;">
+              🔓 Đăng Xuất / Đổi Key
+            </button>
+            <button class="btn btn-secondary" onclick="openActivationModal()">
+              ➕ Nhập Key Mới
+            </button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr; gap: 20px; max-width: 680px;">
+          <!-- Đồng hồ đếm ngược thời gian thực (Ngày, Giờ, Phút, Giây) -->
+          <div class="countdown-card">
+            <div class="countdown-title">⏱️ THỜI GIAN BẢN QUYỀN CÒN LẠI (ĐẾM NGƯỢC THỰC TẾ)</div>
+            <div id="countdownGrid" class="countdown-grid">
+              <div class="countdown-box">
+                <span id="cdDays" class="countdown-num">00</span>
+                <span class="countdown-label">NGÀY</span>
+              </div>
+              <div class="countdown-box">
+                <span id="cdHours" class="countdown-num">00</span>
+                <span class="countdown-label">GIỜ</span>
+              </div>
+              <div class="countdown-box">
+                <span id="cdMins" class="countdown-num">00</span>
+                <span class="countdown-label">PHÚT</span>
+              </div>
+              <div class="countdown-box">
+                <span id="cdSecs" class="countdown-num">00</span>
+                <span class="countdown-label">GIÂY</span>
+              </div>
+            </div>
+            <div id="cdLifetime" class="countdown-lifetime" style="display: none;">
+              ✨ BẢN QUYỀN VĨNH VIỄN (LIFETIME - KHÔNG GIỚI HẠN THỜI GIAN)
+            </div>
+            <div id="cdExpired" class="countdown-lifetime" style="display: none; background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); color: #f87171;">
+              ⚠️ BẢN QUYỀN ĐÃ HẾT HẠN - VUI LÒNG GIA HẠN HOẶC ĐỔI KEY MỚI
+            </div>
+          </div>
+
+          <!-- Bảng chi tiết bản quyền -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <span style="color: var(--text-muted);">Trạng thái:</span>
+                <span id="licStatusVal" style="font-weight: 700; color: var(--green);">Đã kích hoạt</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <span style="color: var(--text-muted);">Khách hàng:</span>
+                <span id="licCustomerVal" style="font-weight: 600;">—</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <span style="color: var(--text-muted);">Gói kích hoạt:</span>
+                <span id="licPlanVal" style="font-weight: 600; color: var(--accent);">—</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <span style="color: var(--text-muted);">Thời hạn:</span>
+                <span id="licDaysVal" style="font-weight: 700;">—</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <span style="color: var(--text-muted);">Mã máy (Hardware ID):</span>
+                <span id="licMidVal" style="font-family: monospace; color: var(--cyan);">—</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted);">Key đang dùng:</span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <span id="licKeyMasked" style="font-family: monospace; font-size: 11px; color: var(--text-dim); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">—</span>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyCurrentKey()">Sao chép</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Danh sách Key đã lưu trên máy -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div>
+                <h3 style="font-size: 15px; font-weight: 700; color: #fff;">⭐ Danh Sách Key Đã Lưu Trên Máy</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Chuyển đổi nhanh giữa các gói bản quyền bất kỳ lúc nào</p>
+              </div>
+            </div>
+            <div id="pageSavedKeysList" style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="text-align: center; color: var(--text-dim); font-size: 12px; padding: 16px;">Chưa có key nào được lưu</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      
+
+      
+
+      <!-- ═══ 7. SETTINGS ═══ -->
+      <section id="page-settings" class="page">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Cài Đặt Hệ Thống</h1>
+            <p class="page-desc">Tùy chỉnh thư mục lưu trữ và cấu hình chạy</p>
+          </div>
+        </div>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 650px;">
+          <div class="form-group" style="margin-bottom: 18px;">
+            <label class="form-label">Thư mục xuất video (Output Directory):</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="settingOutputDir" class="form-input">
+              <button class="btn btn-secondary" onclick="openOutputsFolder()">Mở</button>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 18px;">
+            <label class="form-label">Số luồng tải lên và render mặc định:</label>
+            <input type="number" id="settingThreadCount" class="form-input" min="1" max="10">
+          </div>
+
+          <button type="button" class="btn btn-primary" onclick="saveAppSettings()">
+            Lưu Cài Đặt
+          </button>
+
+          <!-- Mục Quản Lý Cập Nhật GitHub -->
+          <div style="margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <h3 style="font-size: 15px; font-weight: 700; color: #fff; margin: 0;">🚀 Cập Nhật Phần Mềm (GitHub)</h3>
+              <span id="settingsCurrentVersion" style="font-size: 12px; color: #38bdf8; font-weight: 700; background: rgba(56, 189, 248, 0.1); padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.25);">Phiên bản: v26.7.1</span>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label class="form-label">Đường dẫn GitHub Repository (Dạng: username/repo):</label>
+              <input type="text" id="settingGithubRepo" class="form-input" placeholder="Ví dụ: tranduy/toki-plus">
+              <p style="font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.5;">
+                💡 <em>Mỗi khi bạn nén file <code>TOKI-Client-App.zip</code> và tạo bản Release mới trên GitHub, công cụ trên máy của khách sẽ tự động phát hiện và hiện thông báo tải bản mới.</em>
+              </p>
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary" onclick="checkAppUpdate(true)">
+                🔄 Kiểm Tra Cập Nhật Ngay
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="openLatestReleaseGithub()">
+                🌐 Mở Trang GitHub Release
+              </button>
+            </div>
+            <div id="settingsUpdateResult" style="display: none; margin-top: 14px; padding: 12px 14px; border-radius: 8px; font-size: 13px;"></div>
+          </div>
+
+          <!-- Mục Dọn Dẹp Bộ Nhớ Đệm Tạm (Uploads & Cache) -->
+          <div style="margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h3 style="font-size: 15px; font-weight: 700; color: #fff; margin: 0;">🧹 Dọn Dẹp Bộ Nhớ Đệm & File Tải Lên</h3>
+              <span id="cacheSizeBadge" style="font-size: 12px; color: var(--green); font-weight: 700; background: rgba(16, 185, 129, 0.1); padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.25);">0 MB</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+              Xóa các file ảnh, video tạm trong thư mục <code>uploads/</code> đã xử lý xong để giải phóng dung lượng ổ cứng. Các video đã xuất trong thư mục <code>Video/</code> được giữ nguyên an toàn 100%.
+            </p>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary" onclick="checkCacheInfo()">
+                🔄 Kiểm Tra Dung Lượng
+              </button>
+              <button type="button" class="btn btn-danger" onclick="triggerCleanCache()">
+                🗑️ Dọn Rác Giải Phóng Ổ Cứng
+              </button>
+            </div>
+            <div id="cacheCleanResult" style="display: none; margin-top: 12px; font-size: 12px; color: var(--green);"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ════ ADD ACCOUNT MODAL ════ -->
+  <div id="addAccountModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title">Thêm Tài Khoản Toki Plus</h2>
+        <p class="modal-subtitle">Nhập API Key để công cụ tự động gửi tác vụ</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Tên gợi nhớ (Tùy chọn):</label>
+        <input type="text" id="newAccName" class="form-input" placeholder="Ví dụ: Acc Chính 1">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">API Key Toki Plus (Bắt buộc):</label>
+        <input type="text" id="newAccKey" class="form-input" placeholder="Dán API Key vào đây">
+      </div>
+
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeAddAccountModal()">Hủy</button>
+        <button type="button" class="btn btn-primary" onclick="submitAddAccount()">Lưu Tài Khoản</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ BULK ADD ACCOUNTS MODAL ════ -->
+  <div id="bulkAccountModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card" style="width: 580px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Thêm Hàng Loạt Tài Khoản Toki Plus</h2>
+        <p class="modal-subtitle">Dán danh sách API Key (mỗi dòng là 1 tài khoản)</p>
+      </div>
+
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label class="form-label" style="margin: 0;">Danh Sách Tài Khoản / API Key:</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="pasteFromClipboard()" style="padding: 3px 8px; font-size: 11px;">📋 Dán Từ Clipboard</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="clearBulkTextarea()" style="padding: 3px 8px; font-size: 11px;">🧹 Xóa Trắng</button>
+            <span id="bulkLineCount" style="color: #38bdf8; font-weight: 700; font-size: 12px;">0 dòng</span>
+          </div>
+        </div>
+        <textarea id="bulkAccTextarea" class="form-textarea" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Nhập hoặc dán mỗi dòng 1 tài khoản...&#10;&#10;Định dạng hỗ trợ:&#10;1) Chỉ cần API Key:&#10;8f92a10b4c8d...&#10;7b63c21a9e5f...&#10;&#10;2) Kèm Tên gợi nhớ:&#10;Acc Chính 1|8f92a10b4c8d...&#10;Acc VIP 2----7b63c21a9e5f..." style="min-height: 200px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 1.6; caret-color: #38bdf8; cursor: text; resize: vertical;" oninput="updateBulkLineCount()"></textarea>
+        <p style="font-size: 11px; color: var(--text-dim); margin-top: 6px;">
+          💡 <em>Nhấn <strong>Enter</strong> để xuống dòng mới. Nhấn <strong>Ctrl + Enter</strong> để lưu ngay. Hệ thống tự động lọc dòng trống và kiểm tra số dư.</em>
+        </p>
+      </div>
+
+      <div id="bulkErrorBox" style="display: none; padding: 10px; border-radius: 6px; background: rgba(239, 68, 68, 0.15); color: #f87171; font-size: 12px; margin-bottom: 12px;"></div>
+
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px;">
+        <button type="button" class="btn btn-secondary" onclick="closeBulkAccountModal()">Hủy</button>
+        <button type="button" class="btn btn-primary" id="btnSubmitBulk" onclick="submitBulkAccounts()">
+          ⚡ Thêm Hàng Loạt & Kiểm Tra Số Dư
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ VIDEO PREVIEW MODAL ════ -->
+  <div id="videoModal" class="modal-backdrop" style="display: none;" onclick="closeVideoModal()">
+    <div class="modal-card" style="width: 640px;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 id="videoModalTitle" style="font-size: 16px; color: #fff;">Xem Video</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeVideoModal()">✕</button>
+      </div>
+      <video id="videoModalPlayer" controls autoplay style="width: 100%; border-radius: 8px; background: #000; max-height: 480px;"></video>
+    </div>
+  </div>
+
+  <!-- ════ UPDATE DETAILS MODAL ════ -->
+  <div id="updateModal" class="modal-backdrop" style="display: none;" onclick="closeUpdateModal()">
+    <div class="modal-card" style="width: 560px;" onclick="event.stopPropagation()">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 26px;">🚀</span>
+          <div>
+            <h2 class="modal-title" style="font-size: 18px;">Bản Cập Nhật Mới</h2>
+            <p class="modal-subtitle" id="updateModalSubtitle">Đã có phiên bản mới trên GitHub</p>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="closeUpdateModal()">✕</button>
+      </div>
+
+      <div style="margin-top: 16px;">
+        <div style="display: flex; gap: 12px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); padding: 12px 16px; border-radius: 8px; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; color: var(--text-dim); font-weight: 600;">PHIÊN BẢN HIỆN TẠI</div>
+            <div id="updateModalCurrentVer" style="font-size: 15px; font-weight: 700; color: var(--text-muted);">v26.7.0</div>
+          </div>
+          <span style="font-size: 20px; color: #38bdf8;">➔</span>
+          <div>
+            <div style="font-size: 11px; color: var(--text-dim); font-weight: 600;">PHIÊN BẢN MỚI</div>
+            <div id="updateModalLatestVer" style="font-size: 18px; font-weight: 800; color: #4ade80;">v...</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; color: var(--text-dim); font-weight: 600;">NGÀY PHÁT HÀNH</div>
+            <div id="updateModalDate" style="font-size: 13px; font-weight: 600; color: var(--text-main);">---</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+            📝 Nội Dung Bản Cập Nhật (Changelog):
+          </div>
+          <div id="updateModalChangelog" style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.6; color: #cbd5e1; max-height: 180px; overflow-y: auto; white-space: pre-wrap; font-family: inherit;"></div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeUpdateModal()">✕ Để sau</button>
+          <button type="button" class="btn btn-primary" id="btnDownloadUpdate" onclick="downloadUpdatePackage()" style="padding: 10px 20px; font-size: 14px; font-weight: 700;">
+            ⬇️ Tải Bản Cập Nhật Mới (.ZIP)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js?v=4"></script>
+</body>
+</html>

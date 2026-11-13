@@ -1,0 +1,10 @@
+[
+  {
+    "key": "YOUR_KEY_HERE",
+    "note": "YOUR_NOTE_HERE",
+    "plan": "YOUR_PLAN_HERE",
+    "expiresAt": 0,
+    "valid": false,
+    "savedAt": 0
+  }
+]
