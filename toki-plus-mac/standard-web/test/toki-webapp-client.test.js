@@ -19,7 +19,7 @@ test('direct RunningHub login uses the supplied email and password', async () =>
   client.clearSecrets();
 });
 
-test('Toki mode uses the same public app and default instance as the repo', async () => {
+test('Henry Motion uses the configured app and default instance', async () => {
   const calls = [];
   const webApi = {
     getRemainingCoins: async () => 505,
@@ -34,13 +34,31 @@ test('Toki mode uses the same public app and default instance as the repo', asyn
   });
   const taskId = await client.run('image-url', 'video-url');
   assert.equal(taskId, 'web-task-1');
-  assert.equal(calls[0][0], '2120937784407310337');
+  assert.equal(calls[0][0], '2113512034955812865');
   assert.equal(calls[0][1], 'image-url');
   assert.equal(calls[0][2], 'video-url');
   assert.equal(calls[0][4], 'default');
 });
 
-test('Toki mode calculates spent transition coins', async () => {
+test('Henry Motion Plus uses the same app with plus instance', async () => {
+  const calls = [];
+  const webApi = {
+    getRemainingCoins: async () => 505,
+    createWebAppTaskStrict: async (...args) => {
+      calls.push(args);
+      return 'web-task-plus';
+    },
+  };
+  const client = new TokiWebAppClient('TOKI-ACC-test-value', {
+    webApi,
+    account: { email: 'owner@example.com', password: 'password', accessToken: 'token' },
+  });
+  assert.equal(await client.run('image-url', 'video-url', 'plus'), 'web-task-plus');
+  assert.equal(calls[0][0], '2113512034955812865');
+  assert.equal(calls[0][4], 'plus');
+});
+
+test('Henry Motion calculates spent transition coins', async () => {
   let balance = 505;
   const webApi = {
     getRemainingCoins: async () => balance,

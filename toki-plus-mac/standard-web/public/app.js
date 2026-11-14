@@ -8,8 +8,12 @@ const videoFile = $('#videoFile');
 const runButton = $('#runButton');
 const checkAccount = $('#checkAccount');
 const progressPanel = $('#progressPanel');
-const stageOrder = ['checking', 'uploading-image', 'uploading-video', 'submitting', 'processing', 'completed'];
+const instanceInputs = document.querySelectorAll('input[name="instanceType"]');
+const stageOrder = ['checking', 'uploading-image', 'uploading-video', 'submitting', 'processing', 'downloading', 'cleaning', 'completed'];
 let activeJobId = null;
+let jobsLoading = false;
+let jobsRefreshTimer = null;
+const previewUrls = { image: null, video: null };
 
 async function request(url, options) {
   const response = await fetch(url, options);
@@ -23,16 +27,140 @@ async function loadConfig() {
   $('#workflowId').textContent = config.appId;
 }
 
-function setFile(input, zoneSelector, nameSelector) {
+function setFile(input, zoneSelector, nameSelector, kind) {
   const file = input.files[0];
-  $(zoneSelector).classList.toggle('has-file', Boolean(file));
-  $(nameSelector).textContent = file ? file.name : input === imageFile ? 'Chọn ảnh' : 'Chọn video';
+  const zone = $(zoneSelector);
+  zone.classList.toggle('has-file', Boolean(file));
+  $(nameSelector).textContent = file ? file.name : input === imageFile ? 'Nhấn hoặc kéo thả ảnh vào đây' : 'Nhấn hoặc kéo thả video vào đây';
+  const preview = $(`#${kind}Preview`);
+  const icon = $(`#${kind}Icon`);
+  if (previewUrls[kind]) URL.revokeObjectURL(previewUrls[kind]);
+  previewUrls[kind] = file ? URL.createObjectURL(file) : null;
+  preview.classList.toggle('hidden', !file);
+  icon.classList.toggle('hidden', Boolean(file));
+  if (file) preview.src = previewUrls[kind];
+}
+
+function enableDrop(zoneSelector, input, nameSelector, kind) {
+  const zone = $(zoneSelector);
+  for (const eventName of ['dragenter', 'dragover']) {
+    zone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      zone.classList.add('dragging');
+    });
+  }
+  for (const eventName of ['dragleave', 'drop']) {
+    zone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      zone.classList.remove('dragging');
+    });
+  }
+  zone.addEventListener('drop', (event) => {
+    const file = event.dataTransfer.files[0];
+    if (!file) return;
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+    setFile(input, zoneSelector, nameSelector, kind);
+  });
 }
 
 function setAccountMessage(message, type = '') {
   const el = $('#accountResult');
   el.textContent = message;
   el.className = `inline-result ${type}`;
+}
+
+function showPoints(value) {
+  const points = Number(value);
+  if (!Number.isFinite(points)) return;
+  $('#pointsValue').textContent = points.toLocaleString('vi-VN');
+  $('#pointsBadge').classList.remove('hidden');
+}
+
+function selectedInstanceType() {
+  return document.querySelector('input[name="instanceType"]:checked')?.value === 'plus' ? 'plus' : 'default';
+}
+
+function updateInstanceUi() {
+  const isPlus = selectedInstanceType() === 'plus';
+  $('#modePill').textContent = isPlus ? 'PLUS' : 'STANDARD';
+  $('#modePill').classList.toggle('plus', isPlus);
+  $('#instanceLabel').textContent = isPlus ? 'Plus · plus' : 'Standard · default';
+  $('#costHint').textContent = isPlus
+    ? 'Plus · tài nguyên mạnh hơn, có thể tốn nhiều point hơn'
+    : 'Standard · RunningHub tính theo thời gian render';
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function formatTime(timestamp) {
+  if (!Number.isFinite(Number(timestamp))) return '—';
+  return new Intl.DateTimeFormat('vi-VN', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  }).format(new Date(timestamp));
+}
+
+function renderJobs(jobs) {
+  const list = Array.isArray(jobs) ? jobs : [];
+  $('#jobsTotal').textContent = list.length;
+  $('#jobsRunning').textContent = list.filter((job) => job.state === 'running' || job.state === 'queued').length;
+  $('#jobsCompleted').textContent = list.filter((job) => job.state === 'completed').length;
+  $('#jobsFailed').textContent = list.filter((job) => job.state === 'failed').length;
+  $('#jobsEmpty').classList.toggle('hidden', list.length > 0);
+  $('#jobsList').innerHTML = list.map((job) => {
+    const resultLink = job.state === 'completed' && job.result?.url
+      ? `<a class="job-result" href="${escapeHtml(job.result.url)}" target="_blank" rel="noreferrer">Mở video ↗</a>`
+      : '<span></span>';
+    return `<article class="job-row">
+      <div class="job-main"><strong>${escapeHtml(job.taskId || job.id)}</strong><small>${job.instanceType === 'plus' ? 'PLUS' : 'STANDARD'} · ${formatTime(job.createdAt)}</small></div>
+      <div class="job-message" title="${escapeHtml(job.error || job.message)}">${escapeHtml(job.error || job.message)}</div>
+      <span class="job-state ${escapeHtml(job.state)}">${escapeHtml(job.state).toUpperCase()}</span>
+      ${resultLink}
+    </article>`;
+  }).join('');
+}
+
+async function loadJobs() {
+  if (jobsLoading) return;
+  jobsLoading = true;
+  $('#refreshJobs').disabled = true;
+  try {
+    const { jobs } = await request('/api/jobs');
+    $('#jobsLoading').classList.add('hidden');
+    renderJobs(jobs);
+  } catch (error) {
+    $('#jobsLoading').textContent = `Không tải được Jobs: ${error.message}`;
+    $('#jobsLoading').classList.remove('hidden');
+  } finally {
+    jobsLoading = false;
+    $('#refreshJobs').disabled = false;
+  }
+}
+
+function switchPage(page) {
+  const target = page === 'jobs' ? 'jobs' : 'motion';
+  $('#pageMotion').classList.toggle('hidden', target !== 'motion');
+  $('#pageJobs').classList.toggle('hidden', target !== 'jobs');
+  document.querySelectorAll('.nav-item[data-page]').forEach((item) => {
+    item.classList.toggle('active', item.dataset.page === target);
+  });
+  if (jobsRefreshTimer) {
+    clearInterval(jobsRefreshTimer);
+    jobsRefreshTimer = null;
+  }
+  if (target === 'jobs') {
+    void loadJobs();
+    jobsRefreshTimer = setInterval(() => void loadJobs(), 5000);
+  }
 }
 
 function updateProgress(job) {
@@ -55,11 +183,14 @@ function updateProgress(job) {
   }
   if (job.state === 'completed') {
     const result = job.result;
+    showPoints(result.balanceAfter);
     $('#resultVideo').src = result.url;
     $('#downloadLink').href = result.url;
+    const cleanStatus = result.cleaned ? 'đã xóa watermark' : 'không xóa được watermark';
+    const modeLabel = job.instanceType === 'plus' ? 'Plus' : 'Standard';
     $('#resultMeta').textContent = result.consumeCoins
-      ? `Task ${job.taskId} · đã dùng ${result.consumeCoins} coins`
-      : `Task ${job.taskId}`;
+      ? `${modeLabel} · Task ${job.taskId} · đã dùng ${result.consumeCoins} coins · ${cleanStatus}`
+      : `${modeLabel} · Task ${job.taskId} · ${cleanStatus}`;
     $('#resultBox').classList.remove('hidden');
     runButton.disabled = false;
     runButton.textContent = 'Chạy video mới';
@@ -72,6 +203,7 @@ async function pollJob() {
     updateProgress(job);
     if (job.state === 'failed' || job.state === 'completed') {
       activeJobId = null;
+      if (!$('#pageJobs').classList.contains('hidden')) void loadJobs();
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 2500));
@@ -100,7 +232,8 @@ checkAccount.addEventListener('click', async () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: email.value.trim(), password: password.value }),
     });
-    setAccountMessage(`Kết nối thành công · Free/transition balance: ${result.balance} coins`, 'success');
+    showPoints(result.balance);
+    setAccountMessage('Kết nối thành công · Đã cập nhật point mới nhất.', 'success');
   } catch (error) {
     setAccountMessage(error.message, 'error');
   } finally {
@@ -134,6 +267,7 @@ runButton.addEventListener('click', async () => {
       body: JSON.stringify({
         email: email.value.trim(),
         password: password.value,
+        instanceType: selectedInstanceType(),
         imageUploadId,
         videoUploadId,
       }),
@@ -150,8 +284,18 @@ runButton.addEventListener('click', async () => {
   }
 });
 
-imageFile.addEventListener('change', () => setFile(imageFile, '#imageZone', '#imageName'));
-videoFile.addEventListener('change', () => setFile(videoFile, '#videoZone', '#videoName'));
+imageFile.addEventListener('change', () => setFile(imageFile, '#imageZone', '#imageName', 'image'));
+videoFile.addEventListener('change', () => setFile(videoFile, '#videoZone', '#videoName', 'video'));
+enableDrop('#imageZone', imageFile, '#imageName', 'image');
+enableDrop('#videoZone', videoFile, '#videoName', 'video');
+instanceInputs.forEach((input) => input.addEventListener('change', updateInstanceUi));
+updateInstanceUi();
+document.querySelectorAll('.nav-item[data-page]').forEach((item) => {
+  item.addEventListener('click', () => switchPage(item.dataset.page));
+});
+$('#refreshJobs').addEventListener('click', () => void loadJobs());
+window.addEventListener('hashchange', () => switchPage(location.hash.slice(1)));
+switchPage(location.hash.slice(1));
 loadConfig().catch((error) => {
   $('#workflowId').textContent = 'Không tải được cấu hình';
   $('#errorBox').textContent = error.message;

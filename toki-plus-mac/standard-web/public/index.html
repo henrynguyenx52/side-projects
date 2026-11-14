@@ -3,98 +3,114 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Chạy workflow Motion Standard trên RunningHub mà không cần dùng ComfyUI.">
-    <title>Motion Standard Runner</title>
+    <meta name="description" content="Henry Motion — tạo video chuyển động bằng RunningHub.">
+    <title>Henry Motion</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
-    <main class="shell">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">YOUR RUNNINGHUB APP · STANDARD ONLY</p>
-          <h1>Motion Standard<br><span>không cần node.</span></h1>
-          <p class="intro">Chọn một ảnh nhân vật và một video chuyển động. Web app tự lo phần upload, workflow và theo dõi kết quả.</p>
-        </div>
-        <div class="workflow-card" aria-label="Thông tin workflow">
-          <span class="status-dot"></span>
-          <div>
-            <small>Public App đang dùng</small>
-            <strong id="workflowId">Đang tải…</strong>
-            <span>WebApp session · Default instance</span>
-          </div>
-        </div>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Henry Motion"><span class="brand-mark">H</span><span>HENRY MOTION</span></a>
+        <div class="topbar-status"><span class="online-dot"></span> RunningHub WebApp</div>
       </header>
 
-      <section class="panel account-panel">
-        <div class="section-title">
-          <span>01</span>
-          <div><h2>Đăng nhập RunningHub</h2><p>Đăng nhập trực tiếp, không cần mã TOKI-ACC.</p></div>
-        </div>
-        <div class="key-row login-row">
-          <label class="field grow">
-            <span>Email RunningHub</span>
-            <input id="email" type="email" autocomplete="username" spellcheck="false" placeholder="email@example.com">
-          </label>
-          <label class="field grow">
-            <span>Mật khẩu RunningHub</span>
-            <input id="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu">
-          </label>
-          <button id="checkAccount" class="button secondary" type="button">Kiểm tra tài khoản</button>
-        </div>
-        <p id="accountResult" class="inline-result" aria-live="polite">Thông tin đăng nhập chỉ nằm trong RAM và không được lưu xuống máy.</p>
-      </section>
+      <aside class="sidebar">
+        <p class="nav-label">PRODUCTION</p>
+        <a class="nav-item active" href="#motion" data-page="motion"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 7 16 12l7 5V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span>Motion</span></a>
+        <a class="nav-item" href="#jobs" data-page="jobs"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Jobs</span></a>
+        <div class="sidebar-spacer"></div>
+        <div class="app-info"><span>APP ID</span><strong id="workflowId">Đang tải…</strong><small id="instanceLabel">Standard · default</small></div>
+      </aside>
 
-      <section class="panel">
-        <div class="section-title">
-          <span>02</span>
-          <div><h2>Chọn nguyên liệu</h2><p>Ảnh giữ khuôn mặt; video cung cấp chuyển động và camera.</p></div>
+      <main class="content">
+        <div id="pageMotion" class="app-page">
+        <div class="page-header">
+          <div><h1>Motion</h1><p>Đồng bộ ảnh nhân vật với chuyển động từ video mẫu.</p></div>
+          <span id="modePill" class="mode-pill">STANDARD</span>
         </div>
-        <div class="media-grid">
-          <label class="dropzone" id="imageZone">
-            <input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp">
-            <span class="drop-icon">A</span>
-            <strong>Ảnh nhân vật</strong>
-            <small>JPG, PNG hoặc WEBP · tối đa 40 MB</small>
-            <em id="imageName">Chọn ảnh</em>
-          </label>
-          <label class="dropzone" id="videoZone">
-            <input id="videoFile" type="file" accept="video/mp4,video/quicktime,video/webm">
-            <span class="drop-icon">V</span>
-            <strong>Video chuyển động</strong>
-            <small>MP4, MOV hoặc WEBM · tối đa 2 GB</small>
-            <em id="videoName">Chọn video</em>
-          </label>
-        </div>
-      </section>
 
-      <section class="run-panel">
-        <div>
-          <small>Sẵn sàng chạy</small>
-          <strong>Ảnh + Video → WebApp của ní</strong>
-        </div>
-        <button id="runButton" class="button primary" type="button">Chạy video</button>
-      </section>
+        <section class="card account-card">
+          <div class="card-heading"><span class="step-number">01</span><div><h2>Tài khoản RunningHub</h2><p>Dùng free / transition coins trực tiếp từ tài khoản của ní.</p></div></div>
+          <div class="login-grid">
+            <label class="field"><span>Email</span><input id="email" type="email" autocomplete="username" spellcheck="false" placeholder="email@example.com"></label>
+            <label class="field"><span>Mật khẩu</span><input id="password" type="password" autocomplete="current-password" value="Betho1411@." placeholder="••••••••"></label>
+            <button id="checkAccount" class="btn btn-secondary check-points-btn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 12h7M12 8.5V15"/></svg>
+              Check point
+            </button>
+          </div>
+          <div class="account-meta">
+            <p id="accountResult" class="inline-result" aria-live="polite">Thông tin đăng nhập chỉ được giữ trong RAM khi task đang chạy.</p>
+            <div id="pointsBadge" class="points-badge hidden" aria-live="polite"><span>POINT CÒN LẠI</span><strong id="pointsValue">—</strong><small>RH</small></div>
+          </div>
+        </section>
 
-      <section id="progressPanel" class="panel progress-panel hidden" aria-live="polite">
-        <div class="progress-head">
-          <div><small>TIẾN TRÌNH</small><h2 id="progressMessage">Đang chuẩn bị…</h2></div>
-          <span id="progressState" class="badge">QUEUED</span>
+        <section class="card media-card">
+          <div class="card-heading"><span class="step-number">02</span><div><h2>Nguyên liệu</h2><p>Chọn một ảnh rõ nhân vật và một video có chuyển động cần sao chép.</p></div></div>
+          <div class="media-grid">
+            <label class="dropzone" id="imageZone">
+              <input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp">
+              <div class="preview-wrap"><img id="imagePreview" class="media-preview hidden" alt="Xem trước ảnh nhân vật"><span class="upload-icon" id="imageIcon"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg></span></div>
+              <strong>Ảnh nhân vật</strong><small>JPG, PNG, WEBP · tối đa 40 MB</small><em id="imageName">Nhấn hoặc kéo thả ảnh vào đây</em>
+            </label>
+            <div class="flow-arrow" aria-hidden="true">→</div>
+            <label class="dropzone" id="videoZone">
+              <input id="videoFile" type="file" accept="video/mp4,video/quicktime,video/webm">
+              <div class="preview-wrap"><video id="videoPreview" class="media-preview hidden" muted playsinline></video><span class="upload-icon" id="videoIcon"><svg viewBox="0 0 24 24"><path d="M15 10l4.5-2.5v9L15 14M4 6h9a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/></svg></span></div>
+              <strong>Video chuyển động</strong><small>MP4, MOV, WEBM · tối đa 2 GB</small><em id="videoName">Nhấn hoặc kéo thả video vào đây</em>
+            </label>
+          </div>
+        </section>
+
+        <section class="card mode-card">
+          <div class="card-heading"><span class="step-number">03</span><div><h2>Chế độ chạy</h2><p>Chọn tài nguyên RunningHub cho task này.</p></div></div>
+          <div class="mode-options" role="radiogroup" aria-label="Chế độ RunningHub">
+            <label class="mode-option">
+              <input type="radio" name="instanceType" value="default" checked>
+              <span class="mode-option-body"><strong>Standard</strong><small>Instance mặc định · tiết kiệm point</small></span>
+              <em>DEFAULT</em>
+            </label>
+            <label class="mode-option plus-option">
+              <input type="radio" name="instanceType" value="plus">
+              <span class="mode-option-body"><strong>Plus</strong><small>Tài nguyên mạnh hơn · xử lý ưu tiên hơn</small></span>
+              <em>PLUS</em>
+            </label>
+          </div>
+        </section>
+
+        <section class="action-bar">
+          <div><span>Chế độ đã chọn</span><strong id="costHint">Standard · RunningHub tính theo thời gian render</strong></div>
+          <button id="runButton" class="btn btn-primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>Tạo video</button>
+        </section>
+
+        <section id="progressPanel" class="card progress-panel hidden" aria-live="polite">
+          <div class="progress-head"><div><span class="section-kicker">TIẾN TRÌNH TASK</span><h2 id="progressMessage">Đang chuẩn bị…</h2></div><span id="progressState" class="status-badge">QUEUED</span></div>
+          <div class="track"><div id="progressBar" class="bar"></div></div>
+          <ol id="steps" class="steps"><li data-stage="checking">Đăng nhập</li><li data-stage="uploading-image">Upload ảnh</li><li data-stage="uploading-video">Upload video</li><li data-stage="submitting">Gửi app</li><li data-stage="processing">Render</li><li data-stage="downloading">Tải kết quả</li><li data-stage="cleaning">Xóa watermark</li></ol>
+          <div id="resultBox" class="result-box hidden"><video id="resultVideo" controls playsinline></video><div><span class="success-label">✓ HOÀN TẤT</span><h3>Video của ní đã xong</h3><p id="resultMeta"></p><a id="downloadLink" class="btn btn-primary" target="_blank" rel="noreferrer">Mở / tải video</a></div></div>
+          <p id="errorBox" class="error-box hidden"></p>
+        </section>
         </div>
-        <div class="track"><div id="progressBar" class="bar"></div></div>
-        <ol id="steps" class="steps">
-          <li data-stage="checking">Kiểm tra tài khoản</li>
-          <li data-stage="uploading-image">Upload ảnh</li>
-          <li data-stage="uploading-video">Upload video</li>
-          <li data-stage="submitting">Gửi workflow</li>
-          <li data-stage="processing">Render</li>
-        </ol>
-        <div id="resultBox" class="result-box hidden">
-          <video id="resultVideo" controls playsinline></video>
-          <div><h3>Video đã xong</h3><p id="resultMeta"></p><a id="downloadLink" class="button primary" target="_blank" rel="noreferrer">Mở / tải video</a></div>
+
+        <div id="pageJobs" class="app-page hidden">
+          <div class="page-header jobs-header">
+            <div><h1>Jobs</h1><p>Theo dõi tiến trình và kết quả của các task trong phiên hiện tại.</p></div>
+            <button id="refreshJobs" class="btn btn-secondary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"/></svg>Làm mới</button>
+          </div>
+          <div class="jobs-summary">
+            <div><span>TỔNG TASK</span><strong id="jobsTotal">0</strong></div>
+            <div><span>ĐANG CHẠY</span><strong id="jobsRunning">0</strong></div>
+            <div><span>HOÀN TẤT</span><strong id="jobsCompleted">0</strong></div>
+            <div><span>THẤT BẠI</span><strong id="jobsFailed">0</strong></div>
+          </div>
+          <section class="card jobs-card">
+            <div id="jobsLoading" class="jobs-empty">Đang tải danh sách task…</div>
+            <div id="jobsEmpty" class="jobs-empty hidden">Chưa có task nào trong phiên này.</div>
+            <div id="jobsList" class="jobs-list"></div>
+          </section>
         </div>
-        <p id="errorBox" class="error-box hidden"></p>
-      </section>
-    </main>
+      </main>
+    </div>
     <script src="/app.js" defer></script>
   </body>
 </html>

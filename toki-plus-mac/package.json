@@ -24,7 +24,10 @@
     "start": "electron .",
     "start:electron": "electron .",
     "start:standard-web": "node standard-web/server.js",
-    "test:standard-web": "node --test standard-web/test/*.test.js"
+    "test:standard-web": "node --test standard-web/test/*.test.js",
+    "build:account-codes": "node tools/build-account-codes.js",
+    "filter:points": "node tools/filter-accounts-by-points.js",
+    "test:filter-points": "node --test tools/filter-accounts-by-points.test.js"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.1",

@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --jobright-primary: #00f0a0;
+  --jobright-primary-hover: #00d88f;
+  --jobright-on-primary: #000000;
+  --jobright-ink: #000000;
+  --jobright-on-dark: #ffffff;
+  --jobright-canvas: #ffffff;
+  --jobright-canvas-mint: #ecffe0;
+  --jobright-muted: #86909c;
+  --jobright-hairline: #e5e7eb;
+  --jobright-surface: #f2f4f5;
+}
+
+.dark {
+  --jobright-primary: #00f0a0;
+  --jobright-primary-hover: #00d88f;
+  --jobright-on-primary: #000000;
+  --jobright-ink: #ffffff;
+  --jobright-on-dark: #000000;
+  --jobright-canvas: #0d1117;
+  --jobright-canvas-mint: rgba(0, 240, 160, 0.12);
+  --jobright-muted: #9ca3af;
+  --jobright-hairline: #2a3441;
+  --jobright-surface: #161d26;
+}
+
+body {
+  color: var(--jobright-ink);
+  background-color: var(--jobright-canvas);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Custom scrollbar for horizontal categories */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

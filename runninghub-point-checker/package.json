@@ -1,0 +1,10 @@
+{
+  "name": "runninghub-point-checker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node check-points.js",
+    "test": "node --test check-points.test.js"
+  }
+}

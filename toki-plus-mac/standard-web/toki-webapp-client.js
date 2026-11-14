@@ -4,9 +4,10 @@ const defaultWebApi = require('../src/runninghub/web-api');
 const defaultCipher = require('../src/accounts/account-cipher');
 const { STANDARD_APP_ID } = require('./config');
 
-async function createWebAppTaskStrict(webApi, image, video, accessToken) {
+async function createWebAppTaskStrict(webApi, image, video, accessToken, instanceType = 'default') {
+  const selectedInstance = instanceType === 'plus' ? 'plus' : 'default';
   if (typeof webApi.createWebAppTaskStrict === 'function') {
-    return webApi.createWebAppTaskStrict(STANDARD_APP_ID, image, video, accessToken, 'default');
+    return webApi.createWebAppTaskStrict(STANDARD_APP_ID, image, video, accessToken, selectedInstance);
   }
   const response = await fetch('https://www.runninghub.ai/task/webapp/create', {
     method: 'POST',
@@ -20,7 +21,7 @@ async function createWebAppTaskStrict(webApi, image, video, accessToken) {
         { nodeId: '30', fieldName: 'image', fieldValue: image },
         { nodeId: '33', fieldName: 'video', fieldValue: video },
       ],
-      instanceType: 'default',
+      instanceType: selectedInstance,
     }),
     signal: AbortSignal.timeout(60_000),
   });
@@ -101,9 +102,9 @@ class TokiWebAppClient {
     return this.withToken((token) => this.webApi.uploadToCos(filePath, token));
   }
 
-  async run(image, video) {
+  async run(image, video, instanceType = 'default') {
     this.balanceBefore = await this.getBalance();
-    return this.withToken((token) => createWebAppTaskStrict(this.webApi, image, video, token));
+    return this.withToken((token) => createWebAppTaskStrict(this.webApi, image, video, token, instanceType));
   }
 
   async query(taskId) {
