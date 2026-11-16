@@ -4,16 +4,18 @@ const $ = (selector) => document.querySelector(selector);
 const email = $('#email');
 const password = $('#password');
 const imageFile = $('#imageFile');
+const backImageFile = $('#backImageFile');
 const videoFile = $('#videoFile');
 const runButton = $('#runButton');
 const checkAccount = $('#checkAccount');
 const progressPanel = $('#progressPanel');
-const instanceInputs = document.querySelectorAll('input[name="instanceType"]');
 const stageOrder = ['checking', 'uploading-image', 'uploading-video', 'submitting', 'processing', 'downloading', 'cleaning', 'completed'];
 let activeJobId = null;
 let jobsLoading = false;
 let jobsRefreshTimer = null;
-const previewUrls = { image: null, video: null };
+let modelPresets = [];
+let defaultModelId = '';
+const previewUrls = { image: null, backImage: null, video: null };
 
 async function request(url, options) {
   const response = await fetch(url, options);
@@ -24,14 +26,33 @@ async function request(url, options) {
 
 async function loadConfig() {
   const config = await request('/api/config');
-  $('#workflowId').textContent = config.appId;
+  modelPresets = Array.isArray(config.models) ? config.models : [];
+  defaultModelId = config.defaultModelId || modelPresets[0]?.id || '';
+  $('#modelOptions').innerHTML = modelPresets.map((model) => {
+    const targetType = model.appId ? 'APP' : 'WORKFLOW';
+    const targetId = model.appId || model.workflowId;
+    const checked = model.id === defaultModelId ? ' checked' : '';
+    const plusClass = model.instanceType === 'plus' ? ' plus-option' : '';
+    return `<label class="model-option${plusClass}">
+      <input type="radio" name="modelId" value="${escapeHtml(model.id)}"${checked}>
+      <span class="model-option-body"><strong>${escapeHtml(model.label)}</strong><small>${targetType} ${escapeHtml(targetId)}${model.requiresBackImage ? ' · cần ảnh mặt sau' : ''}</small></span>
+      <em>${escapeHtml(model.instanceType.toUpperCase())}</em>
+    </label>`;
+  }).join('');
+  document.querySelectorAll('input[name="modelId"]').forEach((input) => {
+    input.addEventListener('change', updateModelUi);
+  });
+  updateModelUi();
 }
 
 function setFile(input, zoneSelector, nameSelector, kind) {
   const file = input.files[0];
   const zone = $(zoneSelector);
   zone.classList.toggle('has-file', Boolean(file));
-  $(nameSelector).textContent = file ? file.name : input === imageFile ? 'Nhấn hoặc kéo thả ảnh vào đây' : 'Nhấn hoặc kéo thả video vào đây';
+  const emptyLabel = input === imageFile
+    ? 'Nhấn hoặc kéo thả ảnh vào đây'
+    : input === backImageFile ? 'Chọn ảnh mặt sau' : 'Nhấn hoặc kéo thả video vào đây';
+  $(nameSelector).textContent = file ? file.name : emptyLabel;
   const preview = $(`#${kind}Preview`);
   const icon = $(`#${kind}Icon`);
   if (previewUrls[kind]) URL.revokeObjectURL(previewUrls[kind]);
@@ -78,18 +99,21 @@ function showPoints(value) {
   $('#pointsBadge').classList.remove('hidden');
 }
 
-function selectedInstanceType() {
-  return document.querySelector('input[name="instanceType"]:checked')?.value === 'plus' ? 'plus' : 'default';
+function selectedModel() {
+  const modelId = document.querySelector('input[name="modelId"]:checked')?.value || defaultModelId;
+  return modelPresets.find((model) => model.id === modelId) || null;
 }
 
-function updateInstanceUi() {
-  const isPlus = selectedInstanceType() === 'plus';
+function updateModelUi() {
+  const model = selectedModel();
+  if (!model) return;
+  const isPlus = model.instanceType === 'plus';
   $('#modePill').textContent = isPlus ? 'PLUS' : 'STANDARD';
   $('#modePill').classList.toggle('plus', isPlus);
-  $('#instanceLabel').textContent = isPlus ? 'Plus · plus' : 'Standard · default';
-  $('#costHint').textContent = isPlus
-    ? 'Plus · tài nguyên mạnh hơn, có thể tốn nhiều point hơn'
-    : 'Standard · RunningHub tính theo thời gian render';
+  $('#workflowId').textContent = model.shortLabel || model.label;
+  $('#instanceLabel').textContent = `${model.appId ? 'App' : 'Workflow'} ${model.appId || model.workflowId} · ${model.instanceType}`;
+  $('#costHint').textContent = `${model.label} · RunningHub tính point theo thời gian render`;
+  $('#backImagePanel').classList.toggle('hidden', !model.requiresBackImage);
 }
 
 function escapeHtml(value) {
@@ -121,7 +145,7 @@ function renderJobs(jobs) {
       ? `<a class="job-result" href="${escapeHtml(job.result.url)}" target="_blank" rel="noreferrer">Mở video ↗</a>`
       : '<span></span>';
     return `<article class="job-row">
-      <div class="job-main"><strong>${escapeHtml(job.taskId || job.id)}</strong><small>${job.instanceType === 'plus' ? 'PLUS' : 'STANDARD'} · ${formatTime(job.createdAt)}</small></div>
+      <div class="job-main"><strong>${escapeHtml(job.taskId || job.id)}</strong><small>${escapeHtml(job.modelLabel || (job.instanceType === 'plus' ? 'AI Plus' : 'Standard'))} · ${formatTime(job.createdAt)}</small></div>
       <div class="job-message" title="${escapeHtml(job.error || job.message)}">${escapeHtml(job.error || job.message)}</div>
       <span class="job-state ${escapeHtml(job.state)}">${escapeHtml(job.state).toUpperCase()}</span>
       ${resultLink}
@@ -187,7 +211,7 @@ function updateProgress(job) {
     $('#resultVideo').src = result.url;
     $('#downloadLink').href = result.url;
     const cleanStatus = result.cleaned ? 'đã xóa watermark' : 'không xóa được watermark';
-    const modeLabel = job.instanceType === 'plus' ? 'Plus' : 'Standard';
+    const modeLabel = job.modelLabel || (job.instanceType === 'plus' ? 'Plus' : 'Standard');
     $('#resultMeta').textContent = result.consumeCoins
       ? `${modeLabel} · Task ${job.taskId} · đã dùng ${result.consumeCoins} coins · ${cleanStatus}`
       : `${modeLabel} · Task ${job.taskId} · ${cleanStatus}`;
@@ -243,9 +267,13 @@ checkAccount.addEventListener('click', async () => {
 
 runButton.addEventListener('click', async () => {
   const image = imageFile.files[0];
+  const backImage = backImageFile.files[0];
   const video = videoFile.files[0];
+  const model = selectedModel();
   if (!email.value.trim() || !password.value) return setAccountMessage('Ní cần nhập đủ email và mật khẩu trước.', 'error');
   if (!image || !video) return alert('Vui lòng chọn đủ ảnh nhân vật và video chuyển động.');
+  if (!model) return alert('Vui lòng chọn model.');
+  if (model.requiresBackImage && !backImage) return alert('Model Front + Back cần thêm ảnh mặt sau.');
 
   runButton.disabled = true;
   runButton.textContent = 'Đang upload…';
@@ -257,8 +285,9 @@ runButton.addEventListener('click', async () => {
   $('#progressBar').style.width = '3%';
 
   try {
-    const [imageUploadId, videoUploadId] = await Promise.all([
+    const [imageUploadId, backImageUploadId, videoUploadId] = await Promise.all([
       upload('image', image),
+      model.requiresBackImage ? upload('back-image', backImage) : Promise.resolve(null),
       upload('video', video),
     ]);
     const { job } = await request('/api/jobs', {
@@ -267,8 +296,9 @@ runButton.addEventListener('click', async () => {
       body: JSON.stringify({
         email: email.value.trim(),
         password: password.value,
-        instanceType: selectedInstanceType(),
+        modelId: model.id,
         imageUploadId,
+        backImageUploadId,
         videoUploadId,
       }),
     });
@@ -285,11 +315,11 @@ runButton.addEventListener('click', async () => {
 });
 
 imageFile.addEventListener('change', () => setFile(imageFile, '#imageZone', '#imageName', 'image'));
+backImageFile.addEventListener('change', () => setFile(backImageFile, '#backImageZone', '#backImageName', 'backImage'));
 videoFile.addEventListener('change', () => setFile(videoFile, '#videoZone', '#videoName', 'video'));
 enableDrop('#imageZone', imageFile, '#imageName', 'image');
+enableDrop('#backImageZone', backImageFile, '#backImageName', 'backImage');
 enableDrop('#videoZone', videoFile, '#videoName', 'video');
-instanceInputs.forEach((input) => input.addEventListener('change', updateInstanceUi));
-updateInstanceUi();
 document.querySelectorAll('.nav-item[data-page]').forEach((item) => {
   item.addEventListener('click', () => switchPage(item.dataset.page));
 });

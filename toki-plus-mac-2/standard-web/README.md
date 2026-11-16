@@ -17,10 +17,14 @@ Sau đó mở `http://127.0.0.1:4177`.
 1. Email và mật khẩu RunningHub hợp lệ.
 2. Tài khoản đó còn free/transition credits.
 
-App local chạy RunningHub WebApp `2113512034955812865`, cho phép chọn `instanceType: default` (Standard) hoặc `instanceType: plus` (Plus), với hai input:
+App cho phép chọn 8 model Motion Toki, gồm Front + Back, Toki 2.1, bản 30 FPS và 60 FPS ở hai mức Standard / AI Plus. Model đã chọn quyết định `workflowId` hoặc `appId` và `instanceType` gửi tới RunningHub.
+
+Các App dùng hai input chính:
 
 - node `30`: ảnh nhân vật
 - node `33`: video chuyển động
+
+Model Front + Back yêu cầu thêm ảnh mặt sau ở node `426`, đồng thời bật node `454`. Các model 30 FPS gửi thêm `upscale_method: bicubic` tại node `308`.
 
 Email, mật khẩu và access token chỉ được giữ trong RAM trong lúc task chạy. File upload local được xóa khỏi thư mục tạm sau khi task hoàn tất hoặc thất bại.
 
@@ -28,4 +32,4 @@ Sau khi RunningHub render xong, backend tải kết quả về máy và chạy A
 
 Jobs và video đã xử lý được lưu bền vững trong thư mục `.data/` của app. Khi refresh trang hoặc restart server, các Jobs hoàn tất và link xem/tải video vẫn còn.
 
-Đây là đường RunningHub WebApp session, không phải OpenAPI workflow `2120921661394825218` và không fallback sang app khác nếu app được cấu hình lỗi.
+Đây là đường RunningHub WebApp session bằng email/mật khẩu. App không tự fallback sang model khác nếu model đã chọn bị RunningHub từ chối.

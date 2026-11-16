@@ -2,12 +2,46 @@
 
 const defaultWebApi = require('../src/runninghub/web-api');
 const defaultCipher = require('../src/accounts/account-cipher');
-const { STANDARD_APP_ID } = require('./config');
+const {
+  DEFAULT_MODEL_ID,
+  DEFAULT_NEGATIVE_PROMPT,
+  DEFAULT_PROMPT,
+  getModelPreset,
+} = require('./config');
 
-async function createWebAppTaskStrict(webApi, image, video, accessToken, instanceType = 'default') {
-  const selectedInstance = instanceType === 'plus' ? 'plus' : 'default';
+function buildExtraInputs(model, backImage) {
+  const inputs = [];
+  if (model.workflowId) {
+    inputs.push({
+      nodeId: model.workflowId === '2112427207607308290' ? '492' : '3',
+      fieldName: 'text',
+      fieldValue: DEFAULT_PROMPT,
+    });
+    inputs.push({ nodeId: '4', fieldName: 'text', fieldValue: DEFAULT_NEGATIVE_PROMPT });
+  }
+  if (model.fps === 30) {
+    inputs.push({ nodeId: '308', fieldName: 'upscale_method', fieldValue: 'bicubic' });
+  }
+  if (model.requiresBackImage) {
+    if (!backImage) throw new Error(`${model.label} cần ảnh mặt sau.`);
+    inputs.push({ nodeId: '426', fieldName: 'image', fieldValue: backImage });
+    inputs.push({ nodeId: '454', fieldName: 'value', fieldValue: true });
+  }
+  return inputs;
+}
+
+async function createWebAppTaskStrict(webApi, model, image, backImage, video, accessToken) {
+  const targetId = model.appId || model.workflowId;
+  const extraInputs = buildExtraInputs(model, backImage);
   if (typeof webApi.createWebAppTaskStrict === 'function') {
-    return webApi.createWebAppTaskStrict(STANDARD_APP_ID, image, video, accessToken, selectedInstance);
+    return webApi.createWebAppTaskStrict(
+      targetId,
+      image,
+      video,
+      accessToken,
+      model.instanceType,
+      extraInputs,
+    );
   }
   const response = await fetch('https://www.runninghub.ai/task/webapp/create', {
     method: 'POST',
@@ -16,18 +50,19 @@ async function createWebAppTaskStrict(webApi, image, video, accessToken, instanc
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      webappId: STANDARD_APP_ID,
+      webappId: targetId,
       inputs: [
         { nodeId: '30', fieldName: 'image', fieldValue: image },
         { nodeId: '33', fieldName: 'video', fieldValue: video },
+        ...extraInputs,
       ],
-      instanceType: selectedInstance,
+      instanceType: model.instanceType,
     }),
     signal: AbortSignal.timeout(60_000),
   });
   const data = await response.json().catch(() => null);
   if (!response.ok || data?.code !== 0 || !data?.data?.taskId) {
-    throw new Error(data?.msg || data?.message || `Không thể chạy App ${STANDARD_APP_ID} (HTTP ${response.status}).`);
+    throw new Error(data?.msg || data?.message || `Không thể chạy model ${model.label} (HTTP ${response.status}).`);
   }
   return String(data.data.taskId);
 }
@@ -102,9 +137,21 @@ class TokiWebAppClient {
     return this.withToken((token) => this.webApi.uploadToCos(filePath, token));
   }
 
-  async run(image, video, instanceType = 'default') {
+  async run(image, video, modelId = DEFAULT_MODEL_ID, backImage = '') {
+    const legacyModelId = modelId === 'plus'
+      ? 'runninghub-wan21-60fps-pro'
+      : modelId === 'default' ? DEFAULT_MODEL_ID : modelId;
+    const model = getModelPreset(legacyModelId);
+    if (!model) throw new Error('Model Motion Toki không hợp lệ.');
     this.balanceBefore = await this.getBalance();
-    return this.withToken((token) => createWebAppTaskStrict(this.webApi, image, video, token, instanceType));
+    return this.withToken((token) => createWebAppTaskStrict(
+      this.webApi,
+      model,
+      image,
+      backImage,
+      video,
+      token,
+    ));
   }
 
   async query(taskId) {
@@ -135,4 +182,4 @@ class TokiWebAppClient {
   }
 }
 
-module.exports = { TokiWebAppClient };
+module.exports = { TokiWebAppClient, buildExtraInputs };

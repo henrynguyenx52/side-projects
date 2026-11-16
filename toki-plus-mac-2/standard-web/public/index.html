@@ -19,7 +19,7 @@
         <a class="nav-item active" href="#motion" data-page="motion"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 7 16 12l7 5V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span>Motion</span></a>
         <a class="nav-item" href="#jobs" data-page="jobs"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Jobs</span></a>
         <div class="sidebar-spacer"></div>
-        <div class="app-info"><span>APP ID</span><strong id="workflowId">Đang tải…</strong><small id="instanceLabel">Standard · default</small></div>
+        <div class="app-info"><span>MODEL</span><strong id="workflowId">Đang tải…</strong><small id="instanceLabel">Đang tải cấu hình…</small></div>
       </aside>
 
       <main class="content">
@@ -60,22 +60,20 @@
               <strong>Video chuyển động</strong><small>MP4, MOV, WEBM · tối đa 2 GB</small><em id="videoName">Nhấn hoặc kéo thả video vào đây</em>
             </label>
           </div>
+          <div id="backImagePanel" class="back-image-panel hidden">
+            <div><strong>Ảnh mặt sau bắt buộc</strong><small>Model Front + Back dùng thêm ảnh này để giữ trang phục và nhân vật nhất quán khi quay lưng.</small></div>
+            <label class="compact-upload" id="backImageZone">
+              <input id="backImageFile" type="file" accept="image/jpeg,image/png,image/webp">
+              <img id="backImagePreview" class="compact-preview hidden" alt="Xem trước ảnh mặt sau">
+              <span id="backImageIcon">＋</span>
+              <em id="backImageName">Chọn ảnh mặt sau</em>
+            </label>
+          </div>
         </section>
 
         <section class="card mode-card">
-          <div class="card-heading"><span class="step-number">03</span><div><h2>Chế độ chạy</h2><p>Chọn tài nguyên RunningHub cho task này.</p></div></div>
-          <div class="mode-options" role="radiogroup" aria-label="Chế độ RunningHub">
-            <label class="mode-option">
-              <input type="radio" name="instanceType" value="default" checked>
-              <span class="mode-option-body"><strong>Standard</strong><small>Instance mặc định · tiết kiệm point</small></span>
-              <em>DEFAULT</em>
-            </label>
-            <label class="mode-option plus-option">
-              <input type="radio" name="instanceType" value="plus">
-              <span class="mode-option-body"><strong>Plus</strong><small>Tài nguyên mạnh hơn · xử lý ưu tiên hơn</small></span>
-              <em>PLUS</em>
-            </label>
-          </div>
+          <div class="card-heading"><span class="step-number">03</span><div><h2>Model</h2><p>Chọn workflow, tốc độ khung hình và loại tài nguyên cho task này.</p></div></div>
+          <div id="modelOptions" class="model-options" role="radiogroup" aria-label="Model Motion Toki"></div>
         </section>
 
         <section class="action-bar">

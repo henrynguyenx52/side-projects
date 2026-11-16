@@ -11,9 +11,12 @@ const { pipeline } = require('node:stream/promises');
 const { TokiWebAppClient: RunningHubWebAppClient } = require('./toki-webapp-client');
 const { cleanRunningHubVideo } = require('../src/runninghub/auto-clean');
 const {
+  DEFAULT_MODEL_ID,
+  MODEL_PRESETS,
   STANDARD_WORKFLOW_ID,
   SOURCE_WORKFLOW_ID,
   STANDARD_APP_ID,
+  getModelPreset,
 } = require('./config');
 
 const HOST = process.env.STANDARD_WEB_HOST || '127.0.0.1';
@@ -91,6 +94,8 @@ function publicJob(job) {
     id: job.id,
     state: job.state,
     stage: job.stage,
+    modelId: job.modelId || DEFAULT_MODEL_ID,
+    modelLabel: job.modelLabel || getModelPreset(job.modelId || DEFAULT_MODEL_ID)?.label || 'Toki 2.1',
     instanceType: job.instanceType || 'default',
     message: job.message,
     taskId: job.taskId || null,
@@ -235,7 +240,7 @@ async function prepareCleanResult(job, result) {
   };
 }
 
-async function executeJob(job, payload, imageUpload, videoUpload) {
+async function executeJob(job, payload, imageUpload, backImageUpload, videoUpload) {
   let email = String(payload.email || '').trim();
   let password = String(payload.password || '');
   let client;
@@ -246,12 +251,16 @@ async function executeJob(job, payload, imageUpload, videoUpload) {
 
     updateJob(job, { stage: 'uploading-image', message: `Còn ${balanceBefore} free coins · đang upload ảnh…` });
     const image = await client.upload(imageUpload.path);
+    let backImage = '';
+    if (backImageUpload) {
+      updateJob(job, { stage: 'uploading-image', message: `Còn ${balanceBefore} free coins · đang upload ảnh mặt sau…` });
+      backImage = await client.upload(backImageUpload.path);
+    }
     updateJob(job, { stage: 'uploading-video', message: 'Đang upload video chuyển động…' });
     const video = await client.upload(videoUpload.path);
 
-    const modeLabel = job.instanceType === 'plus' ? 'Plus' : 'Standard';
-    updateJob(job, { stage: 'submitting', message: `Đang gọi Henry Motion ${modeLabel}…` });
-    const taskId = await client.run(image, video, job.instanceType);
+    updateJob(job, { stage: 'submitting', message: `Đang gọi ${job.modelLabel}…` });
+    const taskId = await client.run(image, video, job.modelId, backImage);
     updateJob(job, { taskId, stage: 'processing', message: 'RunningHub đang render video…' });
 
     for (;;) {
@@ -275,7 +284,11 @@ async function executeJob(job, payload, imageUpload, videoUpload) {
     email = '';
     password = '';
     client?.clearSecrets();
-    await Promise.all([removeUpload(imageUpload), removeUpload(videoUpload)]);
+    await Promise.all([
+      removeUpload(imageUpload),
+      removeUpload(backImageUpload),
+      removeUpload(videoUpload),
+    ]);
   }
 }
 
@@ -360,10 +373,15 @@ async function handle(req, res) {
         workflowId: STANDARD_WORKFLOW_ID,
         sourceWorkflowId: SOURCE_WORKFLOW_ID,
         appId: STANDARD_APP_ID,
+        defaultModelId: DEFAULT_MODEL_ID,
+        models: Object.values(MODEL_PRESETS),
         mode: 'henry-motion',
       });
     }
     if (req.method === 'POST' && url.pathname === '/api/upload/image') {
+      return await acceptUpload(req, res, 'image');
+    }
+    if (req.method === 'POST' && url.pathname === '/api/upload/back-image') {
       return await acceptUpload(req, res, 'image');
     }
     if (req.method === 'POST' && url.pathname === '/api/upload/video') {
@@ -379,19 +397,34 @@ async function handle(req, res) {
     if (req.method === 'POST' && url.pathname === '/api/jobs') {
       const body = await readJson(req);
       const imageUpload = uploads.get(body.imageUploadId);
+      const backImageUpload = body.backImageUploadId ? uploads.get(body.backImageUploadId) : null;
       const videoUpload = uploads.get(body.videoUploadId);
       if (!String(body.email || '').trim() || !String(body.password || '')) {
         throw new Error('Vui lòng nhập email và mật khẩu RunningHub.');
       }
       if (!imageUpload || imageUpload.kind !== 'image') throw new Error('Ảnh upload không hợp lệ hoặc đã hết hạn.');
       if (!videoUpload || videoUpload.kind !== 'video') throw new Error('Video upload không hợp lệ hoặc đã hết hạn.');
+      const model = getModelPreset(body.modelId || DEFAULT_MODEL_ID);
+      if (!model) throw new Error('Model Motion Toki không hợp lệ.');
+      if (model.requiresBackImage && (!backImageUpload || backImageUpload.kind !== 'image')) {
+        throw new Error(`${model.label} cần ảnh mặt sau.`);
+      }
       const id = crypto.randomUUID();
       const now = Date.now();
-      const instanceType = body.instanceType === 'plus' ? 'plus' : 'default';
-      const job = { id, instanceType, state: 'queued', stage: 'queued', message: `Đã xếp task ${instanceType === 'plus' ? 'Plus' : 'Standard'}.`, createdAt: now, updatedAt: now };
+      const job = {
+        id,
+        modelId: model.id,
+        modelLabel: model.label,
+        instanceType: model.instanceType,
+        state: 'queued',
+        stage: 'queued',
+        message: `Đã xếp task ${model.label}.`,
+        createdAt: now,
+        updatedAt: now,
+      };
       jobs.set(id, job);
       void persistJobs();
-      void executeJob(job, body, imageUpload, videoUpload);
+      void executeJob(job, body, imageUpload, backImageUpload, videoUpload);
       return json(res, 202, { ok: true, job: publicJob(job) });
     }
     if (req.method === 'GET' && url.pathname === '/api/jobs') {
