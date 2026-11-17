@@ -26,6 +26,11 @@ test-output/
 *.onnx
 *.wav
 *.mp4
+*.zip
+Muse-Studio-*.zip
+
+# Local app runtime / browser profiles (can be huge)
+muse-tool/data/
 
 # JS
 node_modules/

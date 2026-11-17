@@ -1,0 +1,14 @@
+{
+  "name": "outlook-oauth-mail-reader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local-only Outlook mail reader using Microsoft OAuth device authorization.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

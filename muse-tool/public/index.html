@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Muse Studio - Playwright Web App</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">✦</div>
+        <div class="brand-info">
+          <h2>Muse Studio</h2>
+          <span class="badge-engine">Playwright Edition</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-btn active" data-tab="studio">
+          <span class="icon">🎬</span>
+          <span>Tạo Media (Studio)</span>
+        </button>
+        <button class="nav-btn" data-tab="story">
+          <span class="icon">📖</span>
+          <span>Tạo Story (>30s)</span>
+          <span class="nav-badge" style="background: rgba(99, 102, 241, 0.4); color: #fff;">MỚI</span>
+        </button>
+        <button class="nav-btn" data-tab="accounts">
+          <span class="icon">♙</span>
+          <span>Tài khoản Muse</span>
+          <span class="nav-badge" id="badgeAccounts">0</span>
+        </button>
+        <button class="nav-btn" data-tab="batch">
+          <span class="icon">▦</span>
+          <span>Sản xuất hàng loạt</span>
+        </button>
+        <button class="nav-btn" data-tab="media">
+          <span class="icon">🎞</span>
+          <span>Thư viện Media</span>
+          <span class="nav-badge" id="badgeMedia">0</span>
+        </button>
+        <button class="nav-btn" data-tab="api">
+          <span class="icon">⚙️</span>
+          <span>API &amp; Cài đặt</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="server-status" id="serverStatus">
+          <span class="status-dot"></span>
+          <span class="status-text">Đang kết nối...</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- TAB 1: STUDIO -->
+      <section class="tab-pane active" id="pane-studio">
+        <div class="pane-header">
+          <div>
+            <h1>Tạo Media AI</h1>
+            <p class="subtitle">Tạo Video chất lượng cao (5s - 60s ghép FFMPEG) &amp; Hình ảnh 4K thông qua Muse.ai</p>
+          </div>
+        </div>
+
+        <div class="studio-grid">
+          <!-- Left: Input Form -->
+          <div class="card form-card">
+            <div class="form-group">
+              <label>Loại nội dung</label>
+              <div class="type-selector">
+                <button type="button" class="type-btn active" data-type="video">🎥 Video AI</button>
+                <button type="button" class="type-btn" data-type="image">🖼️ Hình ảnh</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="promptInput">Prompt (Mô tả kịch bản / cảnh quay)</label>
+              <textarea id="promptInput" rows="4" placeholder="VD: Cô gái thanh lịch đang giới thiệu sản phẩm kem chống nắng bên bờ biển, ánh sáng vàng hoàng hôn rực rỡ, góc quay cận cảnh chi tiết bao bì..."></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col">
+                <label>Tỉ lệ khung hình (Aspect Ratio)</label>
+                <select id="aspectRatioSelect">
+                  <option value="9:16" selected>9:16 (Dọc TikTok/Reels/Shorts)</option>
+                  <option value="16:9">16:9 (Ngang YouTube/TV)</option>
+                  <option value="1:1">1:1 (Vuông Instagram)</option>
+                </select>
+              </div>
+
+              <div class="form-group col video-only">
+                <label>Độ dài Video</label>
+                <select id="durationSelect">
+                  <option value="5s">5 giây (1 clip đơn)</option>
+                  <option value="10s">10 giây (1 clip chuẩn)</option>
+                  <option value="20s" selected>20 giây (Ghép 2 cảnh FFMPEG)</option>
+                  <option value="30s">30 giây (Ghép 3 cảnh FFMPEG)</option>
+                  <option value="45s">45 giây (Ghép 5 cảnh FFMPEG)</option>
+                  <option value="60s">60 giây (Ghép 6 cảnh FFMPEG)</option>
+                </select>
+              </div>
+
+              <div class="form-group col">
+                <label>Độ phân giải</label>
+                <select id="qualitySelect">
+                  <option value="2K" selected>2K QHD (1440p - Mặc định)</option>
+                  <option value="4K">4K Ultra HD (2160p)</option>
+                  <option value="1K">1K Full HD (1080p)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Reference Images with Paste Support -->
+            <div class="form-group">
+              <div class="paste-zone-header">
+                <label>Ảnh tham chiếu (Tùy chọn: Giữ khuôn mặt / Bao bì sản phẩm)</label>
+                <span class="paste-hint">💡 Nhấn <b>Ctrl+V</b> / <b>Cmd+V</b> để dán ảnh trực tiếp</span>
+              </div>
+              <div class="paste-dropzone" id="studioPasteZone" tabindex="0">
+                <div class="dropzone-inner">
+                  <span class="dropzone-icon">📋</span>
+                  <p>Bấm vào đây để chọn vùng dán (<b>Ctrl+V</b> / <b>Cmd+V</b>), hoặc kéo thả ảnh vào đây</p>
+                  <span class="sub-hint">hoặc <button type="button" class="btn-browse" id="studioBrowseLink">📁 Chọn file từ máy</button></span>
+                  <input type="file" id="refImageInput" accept="image/*" multiple style="display: none;">
+                </div>
+              </div>
+              <div id="refPreviewList" class="ref-previews mt-2"></div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col">
+                <label>Chọn tài khoản Muse</label>
+                <select id="accountSelect">
+                  <option value="">Tự động chọn tài khoản LIVE</option>
+                </select>
+              </div>
+            </div>
+
+            <button id="btnGenerate" class="btn btn-primary btn-block">
+              ✨ Bắt đầu tạo ngay
+            </button>
+          </div>
+
+          <!-- Right: Status & Result Preview -->
+          <div class="card preview-card">
+            <h3>Tiến trình &amp; Thành phẩm</h3>
+            
+            <div id="liveProgressBox" class="progress-box hidden">
+              <div class="progress-header">
+                <span id="progressText">Đang khởi tạo...</span>
+                <span id="progressPercent">0%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div id="progressBar" class="progress-bar-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <div id="resultPreviewContainer" class="result-placeholder">
+              <div class="placeholder-content">
+                <span class="placeholder-icon">🎞️</span>
+                <p>Thành phẩm sau khi tạo sẽ hiển thị và phát trực tiếp tại đây</p>
+              </div>
+            </div>
+
+            <div id="resultActions" class="result-actions hidden">
+              <a id="btnDownloadResult" class="btn btn-success" download target="_blank">⬇️ Tải file về máy</a>
+              <button id="btnCopyUrl" class="btn btn-secondary">📋 Sao chép liên kết</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: STORY (>30s) -->
+      <section class="tab-pane" id="pane-story">
+        <div class="pane-header">
+          <div>
+            <h1>Tạo Phim / Story Video Dài (>30s)</h1>
+            <p class="subtitle">Mỗi cảnh có prompt &amp; ảnh tham chiếu riêng biệt chia theo từng hàng (Dynamic Rows). Bạn có thể thêm/xóa cảnh tự do và dán ảnh (Ctrl+V) riêng cho từng cảnh!</p>
+          </div>
+        </div>
+
+        <div class="studio-grid">
+          <!-- Left: Dynamic Scene Rows Form -->
+          <div class="card form-card">
+            <div class="form-group">
+              <label for="storyPromptInput">Ý tưởng câu chuyện / Kịch bản chung (Tùy chọn để tự động chia cảnh)</label>
+              <textarea id="storyPromptInput" rows="4" placeholder="VD: Nhập cốt truyện tại đây rồi bấm 'Phân tích thành các cảnh' bên dưới, hoặc tự thêm các hàng phân cảnh thủ công..."></textarea>
+            </div>
+
+            <div class="form-row align-center mb-4">
+              <button id="btnBreakdownAuto" type="button" class="btn btn-secondary col">
+                🪄 Tự động chia Prompt thành các cảnh
+              </button>
+
+              <div class="form-group col mb-0">
+                <select id="storyAspectRatioSelect">
+                  <option value="9:16" selected>9:16 (Dọc TikTok/Shorts)</option>
+                  <option value="16:9">16:9 (Ngang Phim/YouTube)</option>
+                  <option value="1:1">1:1 (Vuông Instagram)</option>
+                </select>
+              </div>
+
+              <div class="form-group col mb-0">
+                <select id="storyQualitySelect">
+                  <option value="2K" selected>2K QHD (1440p - Mặc định)</option>
+                  <option value="4K">4K Ultra HD (2160p)</option>
+                  <option value="1K">1080p</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Optional: Global Reference Images -->
+            <div class="form-group">
+              <div class="paste-zone-header">
+                <label>Ảnh tham chiếu CHUNG toàn phim (Tùy chọn: Nhân vật chính / Giữ khuôn mặt)</label>
+                <span class="paste-hint">💡 Nhấn <b>Ctrl+V</b> để dán ảnh chung</span>
+              </div>
+              <div class="paste-dropzone" id="storyPasteZone" tabindex="0">
+                <div class="dropzone-inner">
+                  <span class="dropzone-icon">📋</span>
+                  <p>Bấm vào đây để chọn vùng dán ảnh chung từ Clipboard (<b>Ctrl+V</b> / <b>Cmd+V</b>)</p>
+                  <span class="sub-hint">hoặc <button type="button" class="btn-browse" id="storyBrowseLink">📁 Chọn file từ máy</button></span>
+                  <input type="file" id="storyRefInput" accept="image/*" multiple style="display: none;">
+                </div>
+              </div>
+              <div id="storyRefPreviewList" class="ref-previews mt-2"></div>
+            </div>
+
+            <!-- Dynamic Scene Rows Section -->
+            <div class="story-scene-rows-wrapper">
+              <div class="story-rows-header">
+                <h3>
+                  <span>🎞️ Danh sách phân cảnh &amp; Ảnh tham chiếu riêng</span>
+                  <span class="nav-badge" id="storySceneCountBadge" style="background: rgba(99, 102, 241, 0.2); color: #818cf8;">3 cảnh (Dynamic)</span>
+                </h3>
+                <button type="button" id="btnAddSceneRowTop" class="btn btn-primary btn-sm">+ Thêm cảnh mới (Add row)</button>
+              </div>
+
+              <!-- Dynamic Rows Container -->
+              <div id="storySceneRowsList" class="story-scene-rows-list">
+                <!-- Rendered dynamically via JavaScript -->
+              </div>
+
+              <div class="story-rows-footer">
+                <button type="button" id="btnAddSceneRowBottom" class="btn btn-secondary btn-sm">+ Thêm cảnh tiếp theo (Add row)</button>
+                <button id="btnGenerateStory" type="button" class="btn btn-primary" style="padding: 12px 24px;">
+                  🎬 Bắt đầu tạo Story &amp; Ghép Phim FFMPEG
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Live Scene Board & Stitched Story Result -->
+          <div class="card preview-card">
+            <h3>Tiến trình &amp; Phim Hoàn Chỉnh</h3>
+
+            <div id="storyProgressBox" class="progress-box hidden">
+              <div class="progress-header">
+                <span id="storyProgressText">Đang chuẩn bị kịch bản...</span>
+                <span id="storyProgressPercent">0%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div id="storyProgressBar" class="progress-bar-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <!-- Scene Status Board -->
+            <div id="storySceneBoard" class="scene-board hidden">
+              <h4 style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Trạng thái từng phân cảnh:</h4>
+              <div id="sceneCardsList" class="scene-cards-list"></div>
+            </div>
+
+            <!-- Stitched Final Video Container -->
+            <div id="storyResultContainer" class="result-placeholder">
+              <div class="placeholder-content">
+                <span class="placeholder-icon">🎭</span>
+                <p>Sau khi toàn bộ các cảnh hoàn tất, video dài (>30s) ghép nối hoàn chỉnh sẽ phát trực tiếp tại đây</p>
+              </div>
+            </div>
+
+            <div id="storyResultActions" class="result-actions hidden">
+              <a id="btnDownloadStory" class="btn btn-success" download target="_blank">⬇️ Tải Full Story Video (MP4)</a>
+              <button id="btnCopyStoryUrl" class="btn btn-secondary">📋 Sao chép link</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: ACCOUNTS -->
+      <section class="tab-pane" id="pane-accounts">
+        <div class="pane-header">
+          <div>
+            <h1>Quản lý tài khoản Muse.ai</h1>
+            <p class="subtitle">Đăng nhập tài khoản qua Chrome, lưu session độc lập và tự động xoay vòng</p>
+          </div>
+          <button id="btnOpenAddAccountModal" class="btn btn-primary">+ Thêm tài khoản mới</button>
+        </div>
+
+        <div class="card">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Tên tài khoản</th>
+                  <th>Trạng thái</th>
+                  <th>Đường dẫn Profile</th>
+                  <th>Lần cuối hoạt động</th>
+                  <th>Hành động</th>
+                </tr>
+              </thead>
+              <tbody id="accountsTableBody">
+                <tr><td colspan="5" class="text-center">Đang tải danh sách...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: BATCH -->
+      <section class="tab-pane" id="pane-batch">
+        <div class="pane-header">
+          <div>
+            <h1>Sản xuất hàng loạt (Batch Queue)</h1>
+            <p class="subtitle">Nhập nhiều kịch bản để tự động xếp hàng và tạo video/ảnh liên tục</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="form-group">
+            <label>Nhập danh sách Prompt (Mỗi dòng là một video/ảnh riêng biệt):</label>
+            <textarea id="batchPromptsInput" rows="6" placeholder="Cảnh 1: Giới thiệu sản phẩm A...&#10;Cảnh 2: Hướng dẫn sử dụng tính năng B...&#10;Cảnh 3: Đánh giá chi tiết ưu điểm C..."></textarea>
+          </div>
+          <button id="btnAddBatch" class="btn btn-primary">Xếp vào hàng đợi</button>
+        </div>
+
+        <div class="card mt-4">
+          <h3>Nhật ký công việc gần đây</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Loại</th>
+                  <th>Prompt</th>
+                  <th>Trạng thái</th>
+                  <th>Xem / Tải</th>
+                </tr>
+              </thead>
+              <tbody id="tasksTableBody">
+                <tr><td colspan="5" class="text-center">Chưa có tác vụ nào</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: MEDIA GALLERY -->
+      <section class="tab-pane" id="pane-media">
+        <div class="pane-header">
+          <div>
+            <h1>Thư viện Media</h1>
+            <p class="subtitle">Tất cả video và hình ảnh được tạo và lưu cục bộ trên máy chủ</p>
+          </div>
+          <button id="btnRefreshMedia" class="btn btn-secondary">🔄 Làm mới</button>
+        </div>
+
+        <div id="mediaGrid" class="media-grid">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+
+      <!-- TAB 5: API & SETTINGS -->
+      <section class="tab-pane" id="pane-api">
+        <div class="pane-header">
+          <div>
+            <h1>Cài đặt &amp; Cổng OpenAI API</h1>
+            <p class="subtitle">Tích hợp Muse Studio vào Dify, NextChat, OpenWebUI hoặc script tự động</p>
+          </div>
+        </div>
+
+        <div class="card mb-4">
+          <h3>Cài đặt Trình duyệt Playwright</h3>
+          <div class="form-row align-center">
+            <div class="form-group col">
+              <label class="checkbox-label">
+                <input type="checkbox" id="settingHeadless">
+                <span>Chế độ chạy ngầm (Headless mode - Ẩn cửa sổ Chrome khi tự động hoá)</span>
+              </label>
+            </div>
+            <button id="btnSaveSettings" class="btn btn-primary">Lưu cài đặt</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Tài liệu OpenAI-Compatible API</h3>
+          <p>Địa chỉ Endpoint máy chủ: <code>http://localhost:18638/v1</code></p>
+
+          <h4 class="mt-4">1. Tạo Video qua API</h4>
+          <pre class="code-box"><code>curl -X POST http://localhost:18638/v1/videos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Cô gái năng động tập thể dục buổi sáng trong công viên",
+    "duration": "20s",
+    "aspect_ratio": "9:16",
+    "quality": "4K"
+  }'</code></pre>
+
+          <h4 class="mt-4">2. Tạo Hình ảnh (DALL-E 3 Compatible)</h4>
+          <pre class="code-box"><code>curl -X POST http://localhost:18638/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Chai nước hoa cao cấp đặt trên phiến đá cẩm thạch đen",
+    "size": "1080x1920"
+  }'</code></pre>
+
+          <h4 class="mt-4">3. Chat / Hoàn thành văn bản (Chat Completions)</h4>
+          <pre class="code-box"><code>curl -X POST http://localhost:18638/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "muse-spark",
+    "messages": [{"role": "user", "content": "Viết kịch bản ngắn giới thiệu quán cafe acoustic"}]
+  }'</code></pre>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

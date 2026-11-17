@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Outlook Mail Reader</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">LOCAL · OAUTH</span>
+          <h1>Outlook Mail Reader</h1>
+        </div>
+        <button id="logout" class="ghost hidden" type="button">Đăng xuất</button>
+      </header>
+
+      <section id="login-card" class="card login-card">
+        <div class="mark" aria-hidden="true">O</div>
+        <div>
+          <h2>Đọc hộp thư Outlook</h2>
+          <p class="muted">Chọn tài khoản hoặc nhập email trong danh sách. Nếu tài khoản có Refresh Token, hệ thống sẽ mở hộp thư ngay lập tức.</p>
+        </div>
+        <form id="login-form">
+          <label for="email">Tài khoản Outlook / Microsoft</label>
+          <div class="input-row">
+            <input id="email" name="email" list="accounts-list" type="email" autocomplete="username" placeholder="name@outlook.com" required />
+            <datalist id="accounts-list"></datalist>
+            <button type="submit">Đọc thư</button>
+          </div>
+        </form>
+        <p id="login-error" class="error hidden" role="alert"></p>
+      </section>
+
+      <section id="device-card" class="card hidden">
+        <span class="eyebrow">XÁC THỰC MICROSOFT</span>
+        <h2>Mở trang đăng nhập và nhập mã</h2>
+        <div id="user-code" class="code"></div>
+        <div class="actions">
+          <a id="verify-link" class="button" href="#" target="_blank" rel="noreferrer">Mở trang Microsoft</a>
+          <button id="copy-code" class="ghost" type="button">Sao chép mã</button>
+        </div>
+        <p class="muted">Đang chờ Microsoft xác nhận…</p>
+        <p id="device-error" class="error hidden" role="alert"></p>
+      </section>
+
+      <section id="mailbox" class="hidden">
+        <div class="mailbox-head">
+          <div>
+            <span class="eyebrow">HỘP THƯ</span>
+            <h2 id="profile-name">Mail mới nhất</h2>
+            <p id="profile-email" class="muted"></p>
+          </div>
+          <button id="refresh" class="ghost" type="button">Làm mới</button>
+        </div>
+        <div id="mail-error" class="error hidden" role="alert"></div>
+        <div id="messages" class="messages" aria-live="polite"></div>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
