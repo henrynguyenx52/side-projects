@@ -4,6 +4,8 @@ venv/
 .env
 .env.*
 !.env.example
+!freellmapi/.env
+!freellmapi/server/data/freeapi.db
 
 # Python
 __pycache__/
