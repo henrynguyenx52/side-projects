@@ -3,14 +3,22 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { execFileSync } = require("child_process");
 const { chromium } = require("playwright-core");
 const {
   CHROME_PATH,
   MUSE_URL,
   MUSE_NEW_THREAD,
   MEDIA_DIR,
+  DATA_DIR,
 } = require("./config");
-const { trimVideo } = require("./story");
+const {
+  trimVideo,
+  ensureVideoResolution,
+  extractLastFrame,
+  buildCinematicScenePrompt,
+  stitchVideos,
+} = require("./story");
 
 const JS_GET_ATTACHMENTS = `
 (() => {
@@ -173,6 +181,47 @@ class MusePlaywrightEngine {
     return next;
   }
 
+  async _cleanupStaleProfile(profileDir) {
+    if (!profileDir || !fs.existsSync(profileDir)) return;
+
+    // 1. Check SingletonLock symlink to find PID
+    const lockPath = path.join(profileDir, "SingletonLock");
+    if (fs.existsSync(lockPath)) {
+      try {
+        const link = fs.readlinkSync(lockPath);
+        const match = link.match(/-(\d+)$/);
+        if (match && match[1]) {
+          const pid = parseInt(match[1], 10);
+          if (pid && pid > 0) {
+            try {
+              process.kill(pid, "SIGKILL");
+              this.log(`Đã đóng tiến trình Chrome cũ (PID: ${pid}) đang giữ lock profile.`);
+            } catch (_e) {}
+          }
+        }
+      } catch (_e) {}
+    }
+
+    // 2. Kill any stray Chrome processes using this profileDir
+    try {
+      const { execSync } = require("child_process");
+      const cleanPath = profileDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      execSync(`pkill -9 -f "user-data-dir=${cleanPath}" 2>/dev/null || true`, { timeout: 3000 });
+    } catch (_e) {}
+
+    // 3. Remove stale lock files
+    const lockFiles = ["SingletonLock", "SingletonCookie", "SingletonSocket"];
+    for (const f of lockFiles) {
+      const p = path.join(profileDir, f);
+      if (fs.existsSync(p)) {
+        try {
+          fs.unlinkSync(p);
+        } catch (_e) {}
+      }
+    }
+    await new Promise((r) => setTimeout(r, 600));
+  }
+
   async getContext(account, forceHeadless = null) {
     if (!account) throw new Error("Chưa có tài khoản nào được chọn.");
     const isHeadless = forceHeadless !== null ? forceHeadless : this.headless;
@@ -186,6 +235,9 @@ class MusePlaywrightEngine {
         this.activeContexts.delete(account.id);
       }
     }
+
+    // Auto-cleanup any orphan processes or stale lock files before launching Chrome
+    await this._cleanupStaleProfile(account.profileDir);
 
     if (!this.chromePath || !fs.existsSync(this.chromePath)) {
       throw new Error(
@@ -220,6 +272,10 @@ class MusePlaywrightEngine {
       } catch (_e) {}
       this.activeContexts.delete(accountId);
     }
+    const acc = this.store.getAccount(accountId);
+    if (acc && acc.profileDir) {
+      await this._cleanupStaleProfile(acc.profileDir);
+    }
   }
 
   async closeAll() {
@@ -229,6 +285,60 @@ class MusePlaywrightEngine {
       } catch (_e) {}
     }
     this.activeContexts.clear();
+  }
+
+  // --- Logout single account ---
+  async logoutAccount(account) {
+    if (!account) return;
+    await this.closeContext(account.id);
+
+    // Remove storage state file
+    if (account.storageStatePath && fs.existsSync(account.storageStatePath)) {
+      try {
+        fs.unlinkSync(account.storageStatePath);
+      } catch (_e) {}
+    }
+
+    // Clear Chrome cookies & session storage in profile directory
+    if (account.profileDir && fs.existsSync(account.profileDir)) {
+      try {
+        const defaultDir = path.join(account.profileDir, "Default");
+        if (fs.existsSync(defaultDir)) {
+          const targets = [
+            "Cookies",
+            "Cookies-journal",
+            "Network",
+            "Session Storage",
+            "Local Storage",
+            "IndexedDB",
+            "Service Worker",
+          ];
+          for (const target of targets) {
+            const targetPath = path.join(defaultDir, target);
+            if (fs.existsSync(targetPath)) {
+              fs.rmSync(targetPath, { recursive: true, force: true });
+            }
+          }
+        }
+      } catch (_e) {}
+    }
+
+    this.store.updateAccount(account.id, {
+      status: "DIE",
+      errorReason: "Đã đăng xuất tài khoản.",
+      lastActive: Date.now(),
+    });
+    this.log(`[Account] Đã đăng xuất hoàn toàn tài khoản [${account.name}].`);
+  }
+
+  // --- Logout all accounts ---
+  async logoutAllAccounts() {
+    await this.closeAll();
+    const accounts = [...this.store.accounts];
+    for (const acc of accounts) {
+      await this.logoutAccount(acc);
+    }
+    this.log(`[Account] Đã đăng xuất toàn bộ ${accounts.length} tài khoản.`);
   }
 
   async _probeVideoDuration(page, targetSrc) {
@@ -264,15 +374,11 @@ class MusePlaywrightEngine {
       await new Promise((r) => setTimeout(r, 2000));
       try {
         const url = page.url();
-        const cookies = await context.cookies([MUSE_URL]);
-        const hasSessionCookie = cookies.some((c) =>
-          c.name.includes("session") || c.name.includes("token") || c.name.includes("auth") || c.name.includes("muse")
-        );
         const hasComposer = await page.evaluate(() => {
-          return Boolean(document.querySelector("textarea") || document.querySelector('[contenteditable="true"]'));
+          return Boolean(document.querySelector('textarea, [contenteditable="true"]'));
         }).catch(() => false);
 
-        if (url.includes("muse.ai") && !url.includes("login") && !url.includes("auth") && (hasComposer || hasSessionCookie)) {
+        if (url.includes("muse.ai") && !url.includes("login") && !url.includes("auth") && hasComposer) {
           loggedIn = true;
           break;
         }
@@ -288,9 +394,12 @@ class MusePlaywrightEngine {
         lastActive: Date.now(),
         errorReason: "",
       });
-      this.log(`Đăng nhập thành công tài khoản [${account.name}]!`);
+      // Cleanly close the interactive window and release the profile lock for automation
+      await this.closeContext(account.id);
+      this.log(`Đăng nhập thành công tài khoản [${account.name}]! Đã lưu storageState & giải phóng profile.`);
       return { ok: true, message: "Đăng nhập thành công!" };
     } else {
+      await this.closeContext(account.id).catch(() => {});
       this.store.updateAccount(account.id, {
         status: "DIE",
         errorReason: "Hết thời gian chờ đăng nhập (5 phút).",
@@ -308,12 +417,15 @@ class MusePlaywrightEngine {
       await page.goto(MUSE_NEW_THREAD, { waitUntil: "networkidle", timeout: 25000 }).catch(() => {});
 
       const hasComposer = await page.evaluate(() => {
-        return Boolean(document.querySelector("textarea"));
+        return Boolean(document.querySelector('textarea, [contenteditable="true"]'));
       }).catch(() => false);
 
       const isLoginUrl = page.url().includes("login") || page.url().includes("signin");
+      const isLive = Boolean(hasComposer && !isLoginUrl);
 
-      if (hasComposer && !isLoginUrl) {
+      await this.closeContext(account.id);
+
+      if (isLive) {
         this.store.updateAccount(account.id, {
           status: "LIVE",
           lastActive: Date.now(),
@@ -328,6 +440,7 @@ class MusePlaywrightEngine {
         return { ok: false, status: "DIE", reason: "Phiên đăng nhập đã hết hạn" };
       }
     } catch (err) {
+      await this.closeContext(account.id).catch(() => {});
       this.store.updateAccount(account.id, {
         status: "DIE",
         errorReason: err.message,
@@ -336,13 +449,46 @@ class MusePlaywrightEngine {
     }
   }
 
+  // --- Dismiss any open Lightbox / Modal Dialogs (Radix UI / Muse Media Viewer) ---
+  async _dismissLightboxes(page) {
+    try {
+      await page.keyboard.press("Escape").catch(() => {});
+      await page.evaluate(() => {
+        const dialogs = document.querySelectorAll(
+          '[data-hatch-media-lightbox="true"], [role="dialog"][data-state="open"], div[class*="lightbox" i]'
+        );
+        for (const d of dialogs) {
+          const closeBtn = d.querySelector(
+            'button[aria-label*="close" i], button[class*="close" i], button[data-testid*="close" i], button:has(svg)'
+          );
+          if (closeBtn) {
+            try { closeBtn.click(); } catch (_) {}
+          }
+        }
+      }).catch(() => {});
+      await page.keyboard.press("Escape").catch(() => {});
+      await page.waitForTimeout(200);
+    } catch (_e) {}
+  }
+
   // --- Send Prompt helper ---
   async _sendPrompt(page, promptText) {
-    const textarea = await page.waitForSelector("textarea", { timeout: 25000 });
-    if (!textarea) throw new Error("Không tìm thấy ô nhập lệnh trên trang Muse.ai");
+    // 1. Dismiss any open lightbox / media viewer overlays before interacting with composer
+    await this._dismissLightboxes(page);
 
-    await textarea.click();
-    await textarea.fill(promptText);
+    const composer = await page.waitForSelector('textarea, [contenteditable="true"]', {
+      state: "visible",
+      timeout: 25000,
+    });
+    if (!composer) throw new Error("Không tìm thấy ô nhập lệnh trên trang Muse.ai");
+
+    // 2. Extra safety: dismiss lightbox once more before focusing
+    await this._dismissLightboxes(page);
+
+    // 3. Focus and click with force: true to bypass any pointer interception
+    await composer.focus().catch(() => {});
+    await composer.click({ force: true }).catch(() => {});
+    await composer.fill(promptText);
     await page.waitForTimeout(300);
 
     const clicked = await page.evaluate(() => {
@@ -361,6 +507,7 @@ class MusePlaywrightEngine {
     });
 
     if (!clicked) {
+      await composer.focus().catch(() => {});
       await page.keyboard.press("Enter");
     }
   }
@@ -417,11 +564,11 @@ class MusePlaywrightEngine {
       const specs = [];
       if (aspectRatio) specs.push(`aspect ratio ${aspectRatio}`);
       if (expect === "video" && targetDurationSec > 0) {
-        if (targetDurationSec <= 5) {
-          specs.push("duration: 5s", "single 5-second video clip");
-        } else {
-          specs.push(`total duration ${targetDurationSec}s`);
-        }
+        specs.push(
+          targetDurationSec <= 5
+            ? `duration: ${targetDurationSec}s, single ${targetDurationSec}-second video clip`
+            : `total duration ${targetDurationSec}s`
+        );
       }
       const qUpper = String(quality || "2K").toUpperCase();
       specs.push(`resolution ${qUpper}`);
@@ -456,12 +603,12 @@ class MusePlaywrightEngine {
         } else {
           const shortClipHint =
             targetDurationSec > 0 && targetDurationSec <= 5
-              ? "\n[IMPORTANT DURATION INSTRUCTION]: Strictly generate a single short 5-second video clip (duration: 5s). Do NOT generate 10s."
+              ? `\n[IMPORTANT DURATION INSTRUCTION]: Strictly generate a single short ${targetDurationSec}-second video clip (duration: ${targetDurationSec}s). Do not extend it to 5s or 10s.`
               : "";
           finalPrompt = `Please generate a video (${specs.join(", ")}): ${cleanPrompt}${shortClipHint}${productTitleInstruction}`;
         }
       } else {
-        finalPrompt = `Please generate an image (${specs.join(", ")}): ${cleanPrompt}${productTitleInstruction}`;
+        finalPrompt = `Please generate a high-quality ${quality} image (${specs.join(", ")}): ${cleanPrompt}${productTitleInstruction}`;
       }
 
       const context = await this.getContext(account);
@@ -471,13 +618,18 @@ class MusePlaywrightEngine {
       await page.goto(MUSE_NEW_THREAD, { waitUntil: "domcontentloaded", timeout: 35000 });
       await page.waitForTimeout(1500);
 
-      // Record baseline sources BEFORE sending prompt to completely avoid picking up old videos or placeholders
-      const attsBefore = (await page.evaluate(JS_GET_ATTACHMENTS).catch(() => [])) || [];
+      // Record a stable baseline BEFORE sending the prompt. Muse hydrates old
+      // attachments asynchronously, so a single early scan can miss them and
+      // later mistake an old clip for the new result.
       const baselineSources = new Set();
-      for (const a of attsBefore) {
-        if (a.src) baselineSources.add(a.src);
-        if (a.vSrc) baselineSources.add(a.vSrc);
-        if (a.iSrc) baselineSources.add(a.iSrc);
+      for (let baselinePass = 0; baselinePass < 5; baselinePass++) {
+        const attsBefore = (await page.evaluate(JS_GET_ATTACHMENTS).catch(() => [])) || [];
+        for (const a of attsBefore) {
+          if (a.src) baselineSources.add(a.src);
+          if (a.vSrc) baselineSources.add(a.vSrc);
+          if (a.iSrc) baselineSources.add(a.iSrc);
+        }
+        if (baselinePass < 4) await page.waitForTimeout(1000);
       }
       this.log(`[${account.name}] Đã quét baseline: bỏ qua ${baselineSources.size} media cũ trên trang.`);
 
@@ -733,16 +885,34 @@ class MusePlaywrightEngine {
       const timeTag = Date.now();
       const baseName = `${cleanTitle ? `${cleanTitle}_` : ""}${timeTag}${ext}`;
       const localPath = path.join(MEDIA_DIR, baseName);
-      fs.writeFileSync(localPath, Buffer.from(base64Data, "base64"));
+
+      if (expect === "image") {
+        const rawBuffer = Buffer.from(base64Data, "base64");
+        const tempRaw = path.join(MEDIA_DIR, `temp_raw_${timeTag}`);
+        fs.writeFileSync(tempRaw, rawBuffer);
+        try {
+          const ffmpegBin = fs.existsSync("/opt/homebrew/bin/ffmpeg") ? "/opt/homebrew/bin/ffmpeg" : "ffmpeg";
+          execFileSync(ffmpegBin, ["-y", "-i", tempRaw, "-c:v", "png", localPath], { timeout: 15000 });
+          try { fs.unlinkSync(tempRaw); } catch (_) {}
+        } catch (_convErr) {
+          fs.writeFileSync(localPath, rawBuffer);
+        }
+      } else {
+        fs.writeFileSync(localPath, Buffer.from(base64Data, "base64"));
+      }
 
       // Strictly trim video to target duration using ffmpeg if specified
       if (expect === "video" && targetDurationSec > 0) {
         report(98, `Đang cắt thời lượng chính xác ${targetDurationSec}s bằng FFMPEG...`);
         await trimVideo(localPath, targetDurationSec);
       }
+      if (expect === "video") {
+        report(99, `Đang chuẩn hóa độ phân giải ${qUpper}...`);
+        await ensureVideoResolution(localPath, qUpper, aspectRatio);
+      }
 
       report(100, "Hoàn tất!");
-      this.log(`[${account.name}] Đã lưu video thành phẩm vào: ${localPath} (${(mediaData.size / (1024 * 1024)).toFixed(2)} MB)`);
+      this.log(`[${account.name}] Đã lưu ${expect === "video" ? "video" : "ảnh"} thành phẩm vào: ${localPath} (${(mediaData.size / (1024 * 1024)).toFixed(2)} MB)`);
 
       const realDur = (matchedAtt && (knownClipDurations.get(matchedAtt.checkSrc) || Number(matchedAtt.dur || 0))) || 0;
       const finalDurText = targetDurationSec > 0 ? `${targetDurationSec}s` : (realDur > 0 ? `${realDur}s` : "dynamic");
@@ -818,6 +988,559 @@ class MusePlaywrightEngine {
             finish_reason: "stop",
           },
         ],
+      };
+    });
+  }
+
+  // --- Helper: Download media data from page context ---
+  async _downloadMediaFromPage(page, finalMediaSrc, localPath) {
+    const mediaData = await page.evaluate(async (src) => {
+      try {
+        const resp = await fetch(src);
+        if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}` };
+        const blob = await resp.blob();
+
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error("FileReader failed"));
+          reader.readAsDataURL(blob);
+        });
+
+        return {
+          ok: true,
+          mime: blob.type || (src.includes(".mp4") ? "video/mp4" : "image/png"),
+          dataUrl,
+          size: blob.size,
+        };
+      } catch (e) {
+        return { ok: false, error: e.message };
+      }
+    }, finalMediaSrc);
+
+    if (!mediaData || !mediaData.ok || !mediaData.dataUrl) {
+      throw new Error(`Không thể trích xuất dữ liệu media: ${mediaData?.error || "unknown"}`);
+    }
+
+    const base64Data = mediaData.dataUrl.split(",")[1];
+    if (!base64Data) {
+      throw new Error("Dữ liệu base64 rỗng.");
+    }
+
+    fs.writeFileSync(localPath, Buffer.from(base64Data, "base64"));
+    return { size: mediaData.size, mime: mediaData.mime };
+  }
+
+  // --- Cinematic Film Pipeline: 1 Muse.ai Conversation, Frame-to-Frame Continuity ---
+  async generateCinematicFilm({
+    cinematicId,
+    prompt,
+    scenes = [],
+    styleKey = "hollywood_35mm",
+    customStyle = "",
+    voiceKey = "female_warm",
+    transition = "cut",
+    aspectRatio = "16:9",
+    quality = "2K",
+    sceneDuration = "10s",
+    commonPromptHead = "",
+    commonPromptTail = "",
+    commonPrompt = "",
+    globalReferenceImages = [],
+    accountId = "",
+    onProgress = null,
+    onSceneUpdate = null,
+  }) {
+    let account = accountId
+      ? this.store.getAccount(accountId) || this.store.pickAccount()
+      : this.store.pickAccount();
+
+    if (!account) {
+      throw new Error("Không có tài khoản Muse.ai nào khả dụng. Vui lòng thêm và đăng nhập tài khoản trước.");
+    }
+
+    const report = (pct, text) => {
+      if (typeof onProgress === "function") {
+        try {
+          onProgress(pct, text);
+        } catch (_e) {}
+      }
+    };
+
+    return this._withAccountLock(account.id, async () => {
+      report(5, `Đang khởi tạo trình duyệt cho [${account.name}]...`);
+      const context = await this.getContext(account);
+      let page = context.pages()[0] || (await context.newPage());
+
+      // Open ONE SINGLE conversation thread on Muse.ai
+      report(10, `[1 Cuộc hội thoại duy nhất] Đang mở luồng chat mới trên Muse.ai...`);
+      await page.goto(MUSE_NEW_THREAD, { waitUntil: "domcontentloaded", timeout: 35000 });
+      await page.waitForTimeout(2000);
+
+      // Record baseline sources BEFORE sending any prompt in this conversation
+      const baselineSources = new Set();
+      for (let bp = 0; bp < 5; bp++) {
+        const attsBefore = (await page.evaluate(JS_GET_ATTACHMENTS).catch(() => [])) || [];
+        for (const a of attsBefore) {
+          if (a.src) baselineSources.add(a.src);
+          if (a.vSrc) baselineSources.add(a.vSrc);
+          if (a.iSrc) baselineSources.add(a.iSrc);
+        }
+        if (bp < 4) await page.waitForTimeout(800);
+      }
+      this.log(`[Cinematic][${account.name}] Đã mở 1 cuộc hội thoại duy nhất. Baseline media cũ: ${baselineSources.size}`);
+
+      // Setup project working directory for intermediate files
+      const projectDir = path.join(DATA_DIR, "projects", `cine_proj_${cinematicId || Date.now()}`);
+      if (!fs.existsSync(projectDir)) {
+        fs.mkdirSync(projectDir, { recursive: true });
+      }
+
+      // Prepare global reference images (applicable to the whole video)
+      const globalRefFilePaths = [];
+      const validGlobalRefs = (Array.isArray(globalReferenceImages) ? globalReferenceImages : []).filter(
+        (img) => img && (img.b64 || img.path)
+      );
+
+      for (let gIdx = 0; gIdx < validGlobalRefs.length; gIdx++) {
+        const gImg = validGlobalRefs[gIdx];
+        if (gImg.path && fs.existsSync(gImg.path)) {
+          globalRefFilePaths.push(gImg.path);
+        } else if (gImg.b64) {
+          const rawB64 = gImg.b64.replace(/^data:image\/\w+;base64,/, "");
+          const tmpFile = path.join(projectDir, `global_ref_${gIdx}_${Date.now()}.png`);
+          fs.writeFileSync(tmpFile, Buffer.from(rawB64, "base64"));
+          globalRefFilePaths.push(tmpFile);
+        }
+      }
+
+      this.log(`[Cinematic] Đã chuẩn bị ${globalRefFilePaths.length} ảnh tham chiếu CHUNG cho toàn bộ video.`);
+
+      const sceneVideoPaths = [];
+      let previousLastFramePath = null;
+      const totalScenes = scenes.length;
+
+      // Sequential generation: wait 1 by 1 inside the same conversation
+      for (let i = 0; i < totalScenes; i++) {
+        const sc = scenes[i];
+        const sceneNum = i + 1;
+        const sceneTitle = sc.title || `Cảnh ${sceneNum}`;
+
+        // Dismiss any lingering lightbox/viewer modal before starting next scene
+        await this._dismissLightboxes(page);
+
+        if (typeof onSceneUpdate === "function") {
+          onSceneUpdate(i, {
+            status: "processing",
+            progress: 5,
+            progressText: `Bắt đầu Cảnh ${sceneNum}/${totalScenes}: "${sceneTitle}"...`,
+          });
+        }
+
+        const overallPct = Math.round(10 + (i / totalScenes) * 80);
+        report(overallPct, `Đang xử lý Cảnh ${sceneNum}/${totalScenes}: "${sceneTitle}"...`);
+
+        // Gather all upload files for this scene
+        const attachmentsForScene = [...globalRefFilePaths];
+
+        // Scene-specific references
+        if (Array.isArray(sc.referenceImages)) {
+          sc.referenceImages.forEach((img, sRefIdx) => {
+            if (img.path && fs.existsSync(img.path)) {
+              attachmentsForScene.push(img.path);
+            } else if (img.b64) {
+              const rawB64 = img.b64.replace(/^data:image\/\w+;base64,/, "");
+              const tmpFile = path.join(projectDir, `scene_${sceneNum}_ref_${sRefIdx}.png`);
+              fs.writeFileSync(tmpFile, Buffer.from(rawB64, "base64"));
+              attachmentsForScene.push(tmpFile);
+            }
+          });
+        }
+
+        // Upload all attachments to composer in this conversation
+        if (attachmentsForScene.length > 0) {
+          await this._dismissLightboxes(page);
+          if (typeof onSceneUpdate === "function") {
+            onSceneUpdate(i, {
+              progressText: `Đang tải ${attachmentsForScene.length} ảnh tham chiếu nhân vật/bối cảnh vào chat...`,
+            });
+          }
+          const fileInput = await page.$('input[type="file"]');
+          if (fileInput) {
+            await fileInput.setInputFiles(attachmentsForScene);
+            await page.waitForTimeout(2000);
+          }
+        }
+
+        // Build continuous cinematic scene prompt with strict duration and voice consistency
+        const scenePrompt = buildCinematicScenePrompt({
+          scene: sc,
+          sceneIndex: i,
+          totalScenes,
+          styleKey,
+          customStyle,
+          voiceKey,
+          duration: sc.duration || sceneDuration || "5s",
+          hasLastFrame: Boolean(i > 0 && previousLastFramePath),
+          globalReferenceImages,
+          aspectRatio,
+          quality,
+          commonPromptHead,
+          commonPromptTail: commonPromptTail || commonPrompt || "",
+          commonPrompt,
+        });
+
+        // Send prompt into the SAME conversation
+        await this._sendPrompt(page, scenePrompt);
+        this.log(`[Cinematic] Đã gửi lệnh Cảnh ${sceneNum}/${totalScenes} vào cuộc hội thoại.`);
+
+        // Wait 1 by 1 for this scene to complete rendering
+        const sceneStartTime = Date.now();
+        const maxWaitMs = 360000; // 6 mins per scene
+        let matchedAtt = null;
+        let postMediaIdleTicks = 0;
+        let stableSrc = "";
+        let stableN = 0;
+
+        while (Date.now() - sceneStartTime < maxWaitMs) {
+          await page.waitForTimeout(2000);
+
+          const elapsedSec = Math.round((Date.now() - sceneStartTime) / 1000);
+          const st = (await page.evaluate(JS_POLL_AGENT_STATUS).catch(() => ({}))) || {};
+          const isGenerating = Boolean(st.isGenerating);
+
+          // Get newly rendered attachments (strictly excluding baselineSources)
+          const allAtts = (await page.evaluate(JS_GET_ATTACHMENTS).catch(() => [])) || [];
+          const newMatchingAtts = [];
+
+          for (const a of allAtts) {
+            const hasVideo = Boolean(a.hasVideo);
+            const src = a.src || "";
+            const vSrc = a.vSrc || "";
+            const isMatch = hasVideo || Boolean(vSrc) || src.includes(".mp4") || src.includes(".webm") || a.dur > 0;
+            if (!isMatch) continue;
+
+            const checkSrc = vSrc || src;
+            if (checkSrc && !baselineSources.has(checkSrc)) {
+              newMatchingAtts.push({ ...a, checkSrc });
+            }
+          }
+
+          const latestAtt = newMatchingAtts.length ? newMatchingAtts[newMatchingAtts.length - 1] : null;
+          if (latestAtt) {
+            if (latestAtt.checkSrc === stableSrc) {
+              stableN += 1;
+            } else {
+              stableSrc = latestAtt.checkSrc;
+              stableN = 0;
+            }
+
+            if (!isGenerating) {
+              postMediaIdleTicks += 1;
+            } else {
+              postMediaIdleTicks = 0;
+            }
+
+            const hasValidSize = (latestAtt.w > 0 && latestAtt.h > 0) || latestAtt.dur > 0 || stableN >= 2;
+            if (!isGenerating && postMediaIdleTicks >= 2 && hasValidSize) {
+              this.log(`[Cinematic] ✅ Cảnh ${sceneNum} đã render hoàn tất trên Muse.ai!`);
+              matchedAtt = latestAtt;
+              break;
+            }
+          }
+
+          const sceneProg = Math.min(94, Math.round(15 + elapsedSec * 0.7));
+          if (typeof onSceneUpdate === "function") {
+            onSceneUpdate(i, {
+              progress: sceneProg,
+              progressText: `Đang render Cảnh ${sceneNum} (${elapsedSec}s)... ${isGenerating ? "[Muse đang vẽ]" : "[Đang hoàn thiện]"}`,
+            });
+          }
+        }
+
+        if (!matchedAtt || !matchedAtt.checkSrc) {
+          throw new Error(`Quá thời gian chờ hoặc Muse.ai không xuất video cho Cảnh ${sceneNum}.`);
+        }
+
+        // Add this scene's media src to baselineSources so subsequent scenes in the same conversation ignore it!
+        baselineSources.add(matchedAtt.checkSrc);
+        if (matchedAtt.vSrc) baselineSources.add(matchedAtt.vSrc);
+        if (matchedAtt.src) baselineSources.add(matchedAtt.src);
+
+        // Download scene video to local storage
+        const sceneClipName = `cine_${cinematicId}_scene_${String(sceneNum).padStart(2, "0")}.mp4`;
+        const sceneLocalPath = path.join(MEDIA_DIR, sceneClipName);
+        if (typeof onSceneUpdate === "function") {
+          onSceneUpdate(i, {
+            progress: 96,
+            progressText: `Đang tải clip Cảnh ${sceneNum} về máy...`,
+          });
+        }
+        await this._downloadMediaFromPage(page, matchedAtt.checkSrc, sceneLocalPath);
+
+        // Trim video if specified (e.g. 5s or 10s)
+        const targetSec = parseInt(String(sc.duration || sceneDuration || "5s").replace(/[^\d]/g, ""), 10) || 5;
+        if (targetSec > 0) {
+          await trimVideo(sceneLocalPath, targetSec);
+        }
+        await ensureVideoResolution(sceneLocalPath, quality, aspectRatio);
+
+        sceneVideoPaths.push(sceneLocalPath);
+
+        // EXTRACT LAST FRAME OF THIS SCENE VIDEO FOR THE NEXT SCENE
+        const lastFrameName = `cine_${cinematicId}_scene_${String(sceneNum).padStart(2, "0")}_last_frame.png`;
+        const lastFramePath = path.join(MEDIA_DIR, lastFrameName);
+        try {
+          await extractLastFrame(sceneLocalPath, lastFramePath);
+          previousLastFramePath = lastFramePath;
+          this.log(`[Cinematic] 📸 Đã trích xuất khung hình cuối của Cảnh ${sceneNum} -> ${lastFrameName}`);
+        } catch (frameErr) {
+          this.log(`[Cinematic] Cảnh báo khi trích xuất frame Cảnh ${sceneNum}: ${frameErr.message}`);
+          previousLastFramePath = null;
+        }
+
+        // Notify scene completion
+        if (typeof onSceneUpdate === "function") {
+          onSceneUpdate(i, {
+            status: "completed",
+            progress: 100,
+            progressText: `Hoàn tất Cảnh ${sceneNum}!`,
+            mediaUrl: `/media/${encodeURIComponent(sceneClipName)}`,
+            localPath: sceneLocalPath,
+            lastFrameUrl: fs.existsSync(lastFramePath) ? `/media/${encodeURIComponent(lastFrameName)}` : "",
+            lastFramePath: fs.existsSync(lastFramePath) ? lastFramePath : "",
+            duration: `${targetSec}s`,
+          });
+        }
+
+        // Cleanly dismiss any preview lightbox created by Muse for this scene
+        await this._dismissLightboxes(page);
+        await page.waitForTimeout(1000);
+      }
+
+      // All scenes generated in 1 conversation! Stitch with FFMPEG
+      report(92, "Đang dùng FFMPEG ghép các phân cảnh với hiệu ứng chuyển cảnh mượt mà...");
+      const cleanTitle = (prompt || "cinematic_film")
+        .replace(/[<>:"/\\|?*\x00-\x1f\n\r]/g, " ")
+        .trim()
+        .slice(0, 35)
+        .replace(/\s+/g, "_");
+
+      const finalFileName = `cinematic_${cleanTitle}_${Date.now()}.mp4`;
+      const finalOutputPath = path.join(MEDIA_DIR, finalFileName);
+
+      await stitchVideos(sceneVideoPaths, finalOutputPath, {
+        transition: transition || "cut",
+        transitionDuration: 0.35,
+        skipHeadFramesSec: 0.08,
+      });
+      this.log(`[Cinematic] Đã ghép thành công ${sceneVideoPaths.length} phân cảnh (transition=${transition || "cut"}) vào: ${finalOutputPath}`);
+
+      report(100, "Hoàn tất toàn bộ Phim Điện Ảnh!");
+
+      return {
+        ok: true,
+        finalFileName,
+        finalVideoUrl: `/media/${encodeURIComponent(finalFileName)}`,
+        finalOutputPath,
+        sceneCount: sceneVideoPaths.length,
+      };
+    });
+  }
+
+  async renderSingleCinematicScene({
+    cinematicId,
+    sceneIndex,
+    sceneData,
+    styleKey = "hollywood_35mm",
+    customStyle = "",
+    voiceKey = "female_warm",
+    aspectRatio = "16:9",
+    quality = "2K",
+    sceneDuration = "10s",
+    commonPromptHead = "",
+    commonPromptTail = "",
+    commonPrompt = "",
+    globalReferenceImages = [],
+    accountId = "",
+    onProgress = null,
+  }) {
+    let account = accountId
+      ? this.store.getAccount(accountId) || this.store.pickAccount()
+      : this.store.pickAccount();
+
+    if (!account) {
+      throw new Error("Không có tài khoản Muse.ai nào khả dụng. Vui lòng thêm hoặc kiểm tra tài khoản trước.");
+    }
+
+    const report = (pct, text) => {
+      if (typeof onProgress === "function") {
+        try { onProgress(pct, text); } catch (_e) {}
+      }
+    };
+
+    return this._withAccountLock(account.id, async () => {
+      report(5, `Đang khởi tạo trình duyệt cho [${account.name}]...`);
+      const context = await this.getContext(account);
+      let page = context.pages()[0] || (await context.newPage());
+
+      report(10, `Đang mở luồng chat mới trên Muse.ai...`);
+      await page.goto(MUSE_NEW_THREAD, { waitUntil: "domcontentloaded", timeout: 35000 });
+      await page.waitForTimeout(2000);
+
+      const baselineSources = new Set();
+      for (let bp = 0; bp < 5; bp++) {
+        const attsBefore = (await page.evaluate(JS_GET_ATTACHMENTS).catch(() => [])) || [];
+        for (const a of attsBefore) {
+          if (a.src) baselineSources.add(a.src);
+          if (a.vSrc) baselineSources.add(a.vSrc);
+          if (a.iSrc) baselineSources.add(a.iSrc);
+        }
+        if (bp < 4) await page.waitForTimeout(800);
+      }
+
+      const projectDir = path.join(DATA_DIR, "projects", `cine_proj_${cinematicId || Date.now()}`);
+      if (!fs.existsSync(projectDir)) {
+        fs.mkdirSync(projectDir, { recursive: true });
+      }
+
+      // Attach global references & scene-specific references
+      const attachments = [];
+      const validGlobalRefs = (Array.isArray(globalReferenceImages) ? globalReferenceImages : []).filter(
+        (img) => img && (img.b64 || img.path)
+      );
+      for (let gIdx = 0; gIdx < validGlobalRefs.length; gIdx++) {
+        const gImg = validGlobalRefs[gIdx];
+        if (gImg.path && fs.existsSync(gImg.path)) {
+          attachments.push(gImg.path);
+        } else if (gImg.b64) {
+          const rawB64 = gImg.b64.replace(/^data:image\/\w+;base64,/, "");
+          const tmpFile = path.join(projectDir, `global_ref_${gIdx}_${Date.now()}.png`);
+          fs.writeFileSync(tmpFile, Buffer.from(rawB64, "base64"));
+          attachments.push(tmpFile);
+        }
+      }
+
+      if (sceneData && Array.isArray(sceneData.referenceImages)) {
+        sceneData.referenceImages.forEach((img, sRefIdx) => {
+          if (img.path && fs.existsSync(img.path)) {
+            attachments.push(img.path);
+          } else if (img.b64) {
+            const rawB64 = img.b64.replace(/^data:image\/\w+;base64,/, "");
+            const tmpFile = path.join(projectDir, `scene_ref_${sRefIdx}_${Date.now()}.png`);
+            fs.writeFileSync(tmpFile, Buffer.from(rawB64, "base64"));
+            attachments.push(tmpFile);
+          }
+        });
+      }
+
+      if (attachments.length > 0) {
+        await this._dismissLightboxes(page);
+        report(15, `Đang tải ${attachments.length} ảnh tham chiếu nhân vật/bối cảnh...`);
+        const fileInput = await page.$('input[type="file"]');
+        if (fileInput) {
+          await fileInput.setInputFiles(attachments);
+          await page.waitForTimeout(2000);
+        }
+      }
+
+      const sceneNum = Number(sceneIndex) + 1;
+      const scenePrompt = buildCinematicScenePrompt({
+        scene: sceneData,
+        sceneIndex,
+        totalScenes: 1,
+        styleKey,
+        customStyle,
+        voiceKey,
+        duration: sceneData.duration || sceneDuration || "10s",
+        hasLastFrame: false,
+        globalReferenceImages,
+        aspectRatio,
+        quality,
+        commonPromptHead: commonPromptHead || (sceneData && sceneData.commonPromptHead) || "",
+        commonPromptTail: commonPromptTail || commonPrompt || (sceneData && (sceneData.commonPromptTail || sceneData.commonPrompt)) || "",
+        commonPrompt,
+      });
+
+      report(20, `Đã gửi prompt Cảnh ${sceneNum} tới Muse.ai...`);
+      await this._sendPrompt(page, scenePrompt);
+
+      // Poll for completion
+      const startTime = Date.now();
+      const maxWaitMs = 360000;
+      let matchedAtt = null;
+      let postMediaIdleTicks = 0;
+      let stableSrc = "";
+      let stableN = 0;
+
+      while (Date.now() - startTime < maxWaitMs) {
+        await page.waitForTimeout(2000);
+        const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+        const st = (await page.evaluate(JS_POLL_AGENT_STATUS).catch(() => ({}))) || {};
+        const isGenerating = Boolean(st.isGenerating);
+
+        const allAtts = (await page.evaluate(JS_GET_ATTACHMENTS).catch(() => [])) || [];
+        const newMatchingAtts = [];
+        for (const a of allAtts) {
+          const hasVideo = Boolean(a.hasVideo);
+          const src = a.src || "";
+          const vSrc = a.vSrc || "";
+          const isMatch = hasVideo || Boolean(vSrc) || src.includes(".mp4") || src.includes(".webm") || a.dur > 0;
+          if (!isMatch) continue;
+          const checkSrc = vSrc || src;
+          if (checkSrc && !baselineSources.has(checkSrc)) {
+            newMatchingAtts.push({ ...a, checkSrc });
+          }
+        }
+
+        const latestAtt = newMatchingAtts.length ? newMatchingAtts[newMatchingAtts.length - 1] : null;
+        if (latestAtt) {
+          if (latestAtt.checkSrc === stableSrc) {
+            stableN += 1;
+          } else {
+            stableSrc = latestAtt.checkSrc;
+            stableN = 0;
+          }
+          if (!isGenerating) {
+            postMediaIdleTicks += 1;
+          } else {
+            postMediaIdleTicks = 0;
+          }
+          const hasValidSize = (latestAtt.w > 0 && latestAtt.h > 0) || latestAtt.dur > 0 || stableN >= 2;
+          if (!isGenerating && postMediaIdleTicks >= 2 && hasValidSize) {
+            matchedAtt = latestAtt;
+            break;
+          }
+        }
+
+        const prog = Math.min(94, Math.round(20 + elapsedSec * 0.7));
+        report(prog, `Đang render Cảnh ${sceneNum} (${elapsedSec}s)...`);
+      }
+
+      if (!matchedAtt || !matchedAtt.checkSrc) {
+        throw new Error(`Quá thời gian chờ hoặc Muse.ai không xuất video cho Cảnh ${sceneNum}.`);
+      }
+
+      const sceneClipName = `cine_${cinematicId || "single"}_scene_${String(sceneNum).padStart(2, "0")}_v${Date.now()}.mp4`;
+      const sceneLocalPath = path.join(MEDIA_DIR, sceneClipName);
+      report(96, `Đang tải clip Cảnh ${sceneNum} về máy...`);
+      await this._downloadMediaFromPage(page, matchedAtt.checkSrc, sceneLocalPath);
+
+      const targetSec = parseInt(String(sceneData.duration || sceneDuration || "10s").replace(/[^\d]/g, ""), 10) || 10;
+      if (targetSec > 0) {
+        await trimVideo(sceneLocalPath, targetSec);
+      }
+      await ensureVideoResolution(sceneLocalPath, quality, aspectRatio);
+
+      await this._dismissLightboxes(page);
+      report(100, `Hoàn tất Cảnh ${sceneNum}!`);
+
+      return {
+        ok: true,
+        sceneClipName,
+        mediaUrl: `/media/${encodeURIComponent(sceneClipName)}`,
+        localPath: sceneLocalPath,
+        duration: `${targetSec}s`,
       };
     });
   }

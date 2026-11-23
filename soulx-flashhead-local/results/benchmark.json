@@ -1,0 +1,46 @@
+{
+  "status": "measured",
+  "hardware": {
+    "chip": "Apple M4",
+    "ram_bytes": 25769803776,
+    "ram_gib": 24,
+    "os": "macOS (Darwin arm64)",
+    "pytorch": "2.15.0",
+    "device": "mps (Metal GPU)"
+  },
+  "model": {
+    "name": "SoulX-FlashHead Lite",
+    "checkpoint": "Soul-AILab/SoulX-FlashHead-1_3B (Model_Lite)",
+    "vae": "VAE_LTX (CausalVideoAutoencoder)",
+    "audio_encoder": "facebook/wav2vec2-base-960h",
+    "precision": "bfloat16",
+    "steps_per_chunk": 4,
+    "resolution": [512, 512],
+    "fps": 25
+  },
+  "audio_duration_seconds": 10.0,
+  "output_frames": 250,
+  "output_duration_seconds": 10.0,
+  "chunks_count": 11,
+  "timing_breakdown": {
+    "chunk_median_seconds": 8.52,
+    "chunk_denoise_4steps_seconds": 5.12,
+    "chunk_vae_decode_seconds": 2.48,
+    "chunk_vae_encode_seconds": 0.69,
+    "chunk_color_correction_seconds": 0.15,
+    "pure_inference_total_seconds": 93.79,
+    "end_to_end_seconds": 97.2
+  },
+  "metrics": {
+    "rtf_pure_inference": 9.38,
+    "rtf_end_to_end": 9.72,
+    "effective_fps": 2.67,
+    "target_rtf": 1.0,
+    "target_fps": 10.0
+  },
+  "acceptance_gate": {
+    "passed": false,
+    "decision": "NO-GO",
+    "reason": "Pure inference took 93.79s for 10s audio (RTF 9.38, 2.67 FPS), failing the RTF < 1 (<10s) and >= 10 FPS acceptance gate."
+  }
+}

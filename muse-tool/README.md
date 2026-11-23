@@ -44,6 +44,13 @@ Hỗ trợ hoạt động đa nền tảng (**macOS, Windows, Linux**) với tr�
 6. **Cổng OpenAI-Compatible API (`http://localhost:18638/v1`):**
    * Cắm trực tiếp vào các công cụ như Dify, NextChat, Chatbox, OpenWebUI.
 
+7. **Phim Điện Ảnh AI (Cinematic Film Studio - 1 Conversation Continuous Pipeline):**
+   * Hoạt động trọn vẹn trong **1 cuộc hội thoại duy nhất** trên Muse.ai.
+   * Xử lý tuần tự từng phân cảnh (1 by 1): Đợi cảnh trước hoàn tất, tự động trích xuất khung hình cuối (Last Frame Extraction qua FFMPEG) và truyền làm ảnh đầu vào (Reference Frame Continuity) cho cảnh kế tiếp.
+   * Cho phép tải lên **ảnh tham chiếu chung cho toàn bộ phim** (giữ nhân vật chính, trang phục, gương mặt, moodboard, bối cảnh) áp dụng xuyên suốt tất cả phân cảnh.
+   * Cung cấp các Preset phong cách điện ảnh cao cấp: Classic Hollywood 35mm, Film Noir, Cyberpunk, Wes Anderson, Christopher Nolan IMAX 70mm, 70s Panavision, Makoto Shinkai Anime, Dark Fantasy, v.v. hoặc tùy chỉnh tự do.
+   * Tự động ghép nối các phân cảnh thành 1 bộ phim điện ảnh hoàn chỉnh duy nhất bằng FFMPEG.
+
 ---
 
 ## 🛠️ Hướng dẫn cài đặt & Khởi chạy

@@ -1,0 +1,17 @@
+__pycache__/
+.gradio/
+models/
+.venv/
+*.pyc
+.DS_Store
+.vscode
+logs/
+sample_results/
+tools/
+deploy.prototxt
+res10_300x300_ssd_iter_140000.caffemodel
+haarcascade_frontalface_default.xml
+assets/
+examples/
+gradio_results/
+gradio_results_multigpu/

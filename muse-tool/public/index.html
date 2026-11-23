@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Muse Studio - Playwright Web App</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -11,7 +13,9 @@
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-logo">✦</div>
+        <div class="brand-logo">
+          <img src="/icon.svg" alt="Muse Logo" class="brand-logo-img">
+        </div>
         <div class="brand-info">
           <h2>Muse Studio</h2>
           <span class="badge-engine">Playwright Edition</span>
@@ -19,7 +23,12 @@
       </div>
 
       <nav class="nav-menu">
-        <button class="nav-btn active" data-tab="studio">
+        <button class="nav-btn active" data-tab="cinematic">
+          <span class="icon">🎥</span>
+          <span>Phim Điện Ảnh (Cinematic)</span>
+          <span class="nav-badge" style="background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff;">CINEMA</span>
+        </button>
+        <button class="nav-btn" data-tab="studio">
           <span class="icon">🎬</span>
           <span>Tạo Media (Studio)</span>
         </button>
@@ -59,7 +68,7 @@
     <!-- Main Content -->
     <main class="main-content">
       <!-- TAB 1: STUDIO -->
-      <section class="tab-pane active" id="pane-studio">
+      <section class="tab-pane" id="pane-studio">
         <div class="pane-header">
           <div>
             <h1>Tạo Media AI</h1>
@@ -170,6 +179,196 @@
             <div id="resultActions" class="result-actions hidden">
               <a id="btnDownloadResult" class="btn btn-success" download target="_blank">⬇️ Tải file về máy</a>
               <button id="btnCopyUrl" class="btn btn-secondary">📋 Sao chép liên kết</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: CINEMATIC FILM (1 Conversation, Continuous Frame Continuity) -->
+      <section class="tab-pane active" id="pane-cinematic">
+        <div class="pane-header">
+          <div>
+            <h1>🎬 Sản xuất Phim Điện Ảnh AI (Cinematic Studio)</h1>
+            <p class="subtitle">Sản xuất phim đa phân cảnh chuẩn điện ảnh, tự do xem trước từng cảnh, render lại cảnh chưa ưng ý và chọn lọc các cảnh để ghép video hoàn chỉnh.</p>
+          </div>
+        </div>
+
+        <div class="studio-grid">
+          <!-- Left: Input Form -->
+          <div class="card form-card">
+            <!-- Voiceover & Audio Consistency Selector -->
+            <div class="form-group">
+              <label for="cineVoiceSelect">🎙️ Giọng thoại &amp; Âm thanh điện ảnh (Voice &amp; Audio Direction)</label>
+              <select id="cineVoiceSelect">
+                <option value="natural_dialogue" selected>🎭 Tự động theo nhân vật (Nam giọng Nam, Nữ giọng Nữ - Khuyên dùng)</option>
+                <option value="female_warm">👩 Nữ trầm ấm, truyền cảm (Warm Female Narrator)</option>
+                <option value="female_gentle">🌸 Nữ nhẹ nhàng, trong trẻo (Gentle Female Voice)</option>
+                <option value="male_cinematic">🎬 Nam trầm ấm điện ảnh (Deep Cinematic Male Voice)</option>
+                <option value="male_inspirational">⚡ Nam truyền cảm hứng (Inspirational Male Voice)</option>
+                <option value="ambient_sfx_only">🍃 Không lời thoại (Chỉ âm thanh tự nhiên &amp; Nhạc nền)</option>
+              </select>
+              <span class="sub-hint" style="display:block; margin-top:4px; font-size:11px; color:var(--text-muted);">
+                Khớp chuẩn xác giọng Nam / Nữ theo nhân vật đang thoại trong kịch bản và giữ tự nhiên, không tạo tiếng cười giả lập nhân tạo.
+              </span>
+            </div>
+
+            <!-- Global Reference Images for the WHOLE Video -->
+            <div class="form-group">
+              <div class="paste-zone-header">
+                <label>Ảnh tham chiếu CHUNG toàn bộ phim (Nhân vật chính / Giữ khuôn mặt / Bối cảnh / Mood)</label>
+                <span class="paste-hint">💡 Nhấn <b>Ctrl+V</b> / <b>Cmd+V</b> để dán ảnh</span>
+              </div>
+              <div class="paste-dropzone" id="cineGlobalPasteZone" tabindex="0">
+                <div class="dropzone-inner">
+                  <span class="dropzone-icon">📋</span>
+                  <p>Bấm vào đây để chọn vùng dán (<b>Ctrl+V</b> / <b>Cmd+V</b>), hoặc kéo thả ảnh</p>
+                  <span class="sub-hint">Mọi cảnh quay trong phim sẽ tuân thủ nghiêm ngặt nhân vật &amp; bối cảnh này • <button type="button" class="btn-browse" id="cineGlobalBrowseBtn">📁 Chọn file từ máy</button></span>
+                  <input type="file" id="cineGlobalRefInput" accept="image/*" multiple style="display: none;">
+                </div>
+              </div>
+              <div id="cineGlobalRefPreviewList" class="ref-previews mt-2"></div>
+            </div>
+
+            <!-- Film Script & Controls -->
+            <div class="form-group">
+              <label for="cinePromptInput">Cốt truyện / Kịch bản chung (Tùy chọn để tự động chia cảnh điện ảnh)</label>
+              <textarea id="cinePromptInput" rows="3" placeholder="VD: Thám tử bước vào con hẻm mưa lúc nửa đêm, phát hiện chiếc cặp bí ẩn phát sáng xanh, khi mở ra thì bị kẻ lạ mặt phục kích từ phía sau..."></textarea>
+            </div>
+
+            <div class="form-row align-center mb-4">
+              <button id="btnCineBreakdown" type="button" class="btn btn-secondary col" style="font-weight: 600;">
+                🪄 Phân cảnh Shotcraft AI (10s • Dynamic)
+              </button>
+
+              <div class="form-group col mb-0">
+                <select id="cineSceneCountSelect" title="Số lượng phân cảnh">
+                  <option value="auto" selected>Tự động (Theo số cảnh nhập)</option>
+                  <option value="1">1 cảnh (10s)</option>
+                  <option value="2">2 cảnh (20s)</option>
+                  <option value="3">3 cảnh (30s)</option>
+                  <option value="4">4 cảnh (40s)</option>
+                  <option value="5">5 cảnh (50s)</option>
+                  <option value="6">6 cảnh (60s)</option>
+                  <option value="8">8 cảnh (80s)</option>
+                  <option value="10">10 cảnh (100s)</option>
+                </select>
+              </div>
+
+              <div class="form-group col mb-0">
+                <select id="cineAspectRatioSelect">
+                  <option value="16:9" selected>16:9 (Chuẩn Điện Ảnh / TV)</option>
+                  <option value="2.39:1">2.39:1 (Anamorphic Cinema Scope)</option>
+                  <option value="9:16">9:16 (Điện Ảnh Dọc TikTok/Shorts)</option>
+                  <option value="1:1">1:1 (Vuông)</option>
+                </select>
+              </div>
+
+              <div class="form-group col mb-0">
+                <select id="cineQualitySelect">
+                  <option value="2K" selected>2K QHD (1440p - Chuẩn)</option>
+                  <option value="4K">4K Ultra HD (2160p)</option>
+                  <option value="1K">1080p</option>
+                </select>
+              </div>
+
+              <div class="form-group col mb-0">
+                <select id="cineDurationSelect">
+                  <option value="10s" selected>10s / cảnh (Chuẩn thoại điện ảnh - Khuyên dùng)</option>
+                  <option value="5s">5s / cảnh (Ngắn gọn)</option>
+                </select>
+              </div>
+
+              <div class="form-group col mb-0">
+                <select id="cineTransitionSelect" title="Hiệu ứng chuyển cảnh giữa các phân đoạn">
+                  <option value="cut" selected>⚡ Cắt dứt khoát điện ảnh (Direct Smart Cut - Chuẩn phim)</option>
+                  <option value="dissolve">✨ Hòa tan mờ (Dissolve 0.35s)</option>
+                  <option value="fadeblack">⬛ Chuyển qua đen (Fade Black 0.35s)</option>
+                  <option value="fade">🎬 Chuyển chéo (Crossfade 0.35s)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Common Prompt Boxes (Head & Tail) -->
+            <div class="form-row mb-4">
+              <div class="form-group col mb-0">
+                <label for="cineCommonPromptHeadInput" style="font-weight: 600; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+                  <span>🌐 Common Prompt ĐẦU</span>
+                  <span class="sub-hint" style="font-weight: normal; font-size: 11px; color: var(--text-muted);">Gắn ở ĐẦU prompt mỗi cảnh</span>
+                </label>
+                <textarea id="cineCommonPromptHeadInput" rows="2" placeholder="VD: Bối cảnh chung, thời tiết, phong cách nghệ thuật, bối cảnh ánh sáng..."></textarea>
+              </div>
+              <div class="form-group col mb-0">
+                <label for="cineCommonPromptTailInput" style="font-weight: 600; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+                  <span>🌐 Common Prompt CUỐI</span>
+                  <span class="sub-hint" style="font-weight: normal; font-size: 11px; color: var(--text-muted);">Gắn ở CUỐI prompt mỗi cảnh</span>
+                </label>
+                <textarea id="cineCommonPromptTailInput" rows="2" placeholder="VD: Không xuất hiện chữ ký hay phụ đề, tone màu chân thực, không slow motion..."></textarea>
+              </div>
+            </div>
+
+            <!-- Dynamic Cinematic Scene Rows -->
+            <div class="story-scene-rows-wrapper">
+              <div class="story-rows-header">
+                <h3>
+                  <span>🎬 Danh sách phân cảnh</span>
+                  <span class="nav-badge" id="cineSceneCountBadge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">3 cảnh</span>
+                </h3>
+                <button type="button" id="btnCineAddSceneTop" class="btn btn-primary btn-sm">+ Thêm cảnh mới</button>
+              </div>
+
+              <!-- Container for Scene Rows -->
+              <div id="cineSceneRowsList" class="story-scene-rows-list">
+                <!-- Dynamically rendered via JS -->
+              </div>
+
+              <div class="story-rows-footer">
+                <button type="button" id="btnCineAddSceneBottom" class="btn btn-secondary btn-sm">+ Thêm cảnh tiếp theo</button>
+                <button id="btnStitchSelectedBottom" type="button" class="btn btn-success" style="padding: 12px 20px; font-weight: 600;">
+                  🎬 Ghép lại các cảnh đã chọn
+                </button>
+                <button id="btnGenerateCinematic" type="button" class="btn btn-primary" style="padding: 12px 24px; background: linear-gradient(135deg, #f59e0b, #ef4444);">
+                  🎥 Bắt đầu sản xuất Toàn Bộ Phim
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Progress, Realtime Scene Continuity Board & Final Movie -->
+          <div class="card preview-card">
+            <h3>Tiến trình &amp; Phim Điện Ảnh Hoàn Chỉnh</h3>
+
+            <div id="cineProgressBox" class="progress-box hidden">
+              <div class="progress-header">
+                <span id="cineProgressText">Đang khởi tạo phiên làm việc...</span>
+                <span id="cineProgressPercent">0%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div id="cineProgressBar" class="progress-bar-fill" style="width: 0%; background: linear-gradient(90deg, #f59e0b, #ef4444);"></div>
+              </div>
+            </div>
+
+            <!-- Scene Continuity Board -->
+            <div id="cineSceneBoard" class="scene-board hidden">
+              <div class="cine-board-header">
+                <h4>Trạng thái từng phân cảnh &amp; Chọn cảnh để ghép:</h4>
+                <button id="btnStitchSelectedTop" type="button" class="btn btn-success btn-sm" style="font-weight: 600;">
+                  🎬 Ghép các cảnh đã chọn
+                </button>
+              </div>
+              <div id="cineSceneCardsList" class="cine-scene-cards-list"></div>
+            </div>
+
+            <!-- Stitched Final Movie Container -->
+            <div id="cineResultContainer" class="result-placeholder">
+              <div class="placeholder-content">
+                <span class="placeholder-icon">🎞️</span>
+                <p>Sau khi các cảnh lần lượt hoàn tất trong 1 cuộc hội thoại Muse.ai, phim điện ảnh ghép FFMPEG hoàn chỉnh sẽ phát trực tiếp tại đây</p>
+              </div>
+            </div>
+
+            <div id="cineResultActions" class="result-actions hidden">
+              <a id="btnDownloadCine" class="btn btn-success" download target="_blank">⬇️ Tải Full Phim Điện Ảnh (MP4)</a>
+              <button id="btnCopyCineUrl" class="btn btn-secondary">📋 Sao chép link</button>
             </div>
           </div>
         </div>
@@ -298,7 +497,10 @@
             <h1>Quản lý tài khoản Muse.ai</h1>
             <p class="subtitle">Đăng nhập tài khoản qua Chrome, lưu session độc lập và tự động xoay vòng</p>
           </div>
-          <button id="btnOpenAddAccountModal" class="btn btn-primary">+ Thêm tài khoản mới</button>
+          <div style="display: flex; gap: 10px;">
+            <button id="btnLogoutAllAccounts" class="btn btn-danger">🚪 Đăng xuất tất cả</button>
+            <button id="btnOpenAddAccountModal" class="btn btn-primary">+ Thêm tài khoản mới</button>
+          </div>
         </div>
 
         <div class="card">

@@ -4,10 +4,20 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
-const { PORT, HOST, MEDIA_DIR, MODEL_ALIASES, CHROME_PATH } = require("./config");
+const crypto = require("crypto");
+const { PORT, HOST, DATA_DIR, MEDIA_DIR, MODEL_ALIASES, CHROME_PATH } = require("./config");
 const { Store } = require("./store");
 const { MusePlaywrightEngine } = require("./engine");
-const { breakdownStory, stitchVideos, trimVideo } = require("./story");
+const {
+  buildScenePrompt,
+  isUsableVideoFile,
+  isUsableImageFile,
+  breakdownStory,
+  stitchVideos,
+  CINEMATIC_STYLES,
+  CINEMATIC_VOICES,
+  breakdownCinematicScript,
+} = require("./story");
 
 const store = new Store();
 const engine = new MusePlaywrightEngine(store);
@@ -16,6 +26,10 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "150mb" }));
 app.use(express.urlencoded({ extended: true, limit: "150mb" }));
+
+function sha256File(filePath) {
+  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+}
 
 // Static frontend
 app.use(express.static(path.join(__dirname, "..", "public")));
@@ -27,6 +41,7 @@ app.get("/media/:filename", (req, res) => {
   if (!fs.existsSync(filePath)) return res.status(404).send("File not found");
 
   const stat = fs.statSync(filePath);
+  if (!stat.isFile()) return res.status(404).send("File not found");
   const fileSize = stat.size;
   const range = req.headers.range;
   const isMp4 = safeName.toLowerCase().endsWith(".mp4");
@@ -121,6 +136,26 @@ app.post("/api/accounts/:id/verify", async (req, res) => {
   }
 });
 
+app.post("/api/accounts/logout-all", async (req, res) => {
+  try {
+    await engine.logoutAllAccounts();
+    res.json({ ok: true, message: "Đã đăng xuất tất cả các tài khoản Muse.ai thành công." });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post("/api/accounts/:id/logout", async (req, res) => {
+  const account = store.getAccount(req.params.id);
+  if (!account) return res.status(404).json({ ok: false, error: "Tài khoản không tồn tại" });
+  try {
+    await engine.logoutAccount(account);
+    res.json({ ok: true, message: `Đã đăng xuất tài khoản [${account.name}] thành công.` });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.delete("/api/accounts/:id", async (req, res) => {
   await engine.closeContext(req.params.id);
   const success = store.deleteAccount(req.params.id);
@@ -146,6 +181,19 @@ app.delete("/api/tasks/:id", (req, res) => {
 app.delete("/api/tasks", (req, res) => {
   store.clearTasks();
   res.json({ ok: true });
+});
+
+app.post("/api/debug/eval", async (req, res) => {
+  try {
+    const account = store.accounts[0];
+    const context = await engine.getContext(account);
+    const page = context.pages()[0];
+    const fn = new Function(req.body.code);
+    const result = await page.evaluate(req.body.code);
+    res.json({ ok: true, result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 app.post("/api/generate", async (req, res) => {
@@ -240,24 +288,64 @@ app.delete("/api/story/:id", (req, res) => {
 app.post("/api/story/generate", async (req, res) => {
   const {
     prompt,
+    expect = "video",
     sceneCount = 3,
     targetDuration = "30s",
     aspectRatio = "9:16",
     quality = "2K",
     referenceImages = [],
     scenes: customScenes,
+    projectId = "story",
+    resume = true,
+    maxRetries = 3,
+    culturalDirection = "",
   } = req.body;
 
   if (!prompt && (!customScenes || customScenes.length === 0)) {
     return res.status(400).json({ ok: false, error: "Vui lòng nhập mô tả câu chuyện." });
   }
 
+  const isImageStory = expect === "image";
   const finalScenes = (customScenes && customScenes.length > 0)
     ? customScenes
     : breakdownStory(prompt, sceneCount);
 
+  const selectedAccount = store.pickAccount();
+  if (!selectedAccount || selectedAccount.status !== "LIVE") {
+    return res.status(409).json({
+      ok: false,
+      error: "Không có tài khoản Muse.ai LIVE. Hãy đăng nhập hoặc verify tài khoản trước khi chạy story.",
+    });
+  }
+  if (!CHROME_PATH || !fs.existsSync(CHROME_PATH)) {
+    return res.status(409).json({ ok: false, error: "Không tìm thấy Chrome/Edge để chạy Muse automation." });
+  }
+
+  const invalidSceneIndex = finalScenes.findIndex((scene) => !scene || !String(scene.prompt || "").trim());
+  if (invalidSceneIndex !== -1) {
+    return res.status(400).json({ ok: false, error: `Cảnh ${invalidSceneIndex + 1} chưa có prompt.` });
+  }
+  const missingReference = referenceImages.find(
+    (image) => image && image.path && !fs.existsSync(image.path)
+  );
+  if (missingReference) {
+    return res.status(400).json({
+      ok: false,
+      error: `Không tìm thấy ảnh tham chiếu: ${missingReference.path}`,
+    });
+  }
+
+  const safeProjectId = String(projectId || "story")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "story";
+  const projectClipDir = path.join(DATA_DIR, "projects", safeProjectId, isImageStory ? "images" : "clips");
+  fs.mkdirSync(projectClipDir, { recursive: true });
+  const retryLimit = Math.max(1, Math.min(5, Number(maxRetries) || 3));
+
   const story = store.createStory({
     prompt,
+    expect: isImageStory ? "image" : "video",
     sceneCount: finalScenes.length,
     targetDuration,
     aspectRatio,
@@ -271,22 +359,45 @@ app.post("/api/story/generate", async (req, res) => {
       store.updateStory(story.id, {
         status: "processing",
         progress: 5,
-        progressText: `Bắt đầu xử lý ${story.scenes.length} phân cảnh câu chuyện...`,
+        progressText: `Bắt đầu xử lý ${story.scenes.length} phân cảnh ${isImageStory ? "hình ảnh" : "video"}...`,
       });
 
-      const videoPaths = [];
+      const mediaPaths = [];
       const totalScenes = story.scenes.length;
+      const failedScenes = [];
 
       for (let i = 0; i < totalScenes; i++) {
         const sc = story.scenes[i];
+        const shotNumber = Number(sc.index) || i + 1;
+        const fileExt = isImageStory ? ".png" : ".mp4";
+        const clipPath = path.join(projectClipDir, `shot_${String(shotNumber).padStart(2, "0")}${fileExt}`);
+        const expectedSceneSeconds = parseInt(String(sc.duration || "").replace(/[^\d]/g, ""), 10) || 0;
+        const isUsable = isImageStory
+          ? isUsableImageFile(clipPath)
+          : isUsableVideoFile(clipPath, 100000, expectedSceneSeconds);
+        const previousClipHash = isUsable ? sha256File(clipPath) : "";
+
+        if (resume !== false && isUsable) {
+          mediaPaths.push(clipPath);
+          store.updateStoryScene(story.id, i, {
+            status: "completed",
+            progress: 100,
+            progressText: isImageStory ? "Đã có ảnh hợp lệ, tiếp tục từ checkpoint." : "Đã có clip hợp lệ, tiếp tục từ checkpoint.",
+            localPath: clipPath,
+            mediaUrl: `/media/${encodeURIComponent(path.basename(clipPath))}`,
+            duration: isImageStory ? null : (sc.duration || "dynamic"),
+          });
+          continue;
+        }
+
         store.updateStoryScene(story.id, i, {
           status: "processing",
           progress: 5,
-          progressText: "Đang render video trên Muse.ai...",
+          progressText: isImageStory ? "Đang tạo ảnh trên Muse.ai..." : "Đang render video trên Muse.ai...",
         });
         store.updateStory(story.id, {
           progress: Math.round(5 + (i / totalScenes) * 80),
-          progressText: `Đang render Cảnh ${i + 1}/${totalScenes}: "${sc.title}"...`,
+          progressText: `Đang tạo ${isImageStory ? "Ảnh" : "Video"} Cảnh ${i + 1}/${totalScenes}: "${sc.title}"...`,
         });
 
         // Combine global story reference images with scene-specific reference images
@@ -296,38 +407,68 @@ app.post("/api/story/generate", async (req, res) => {
         ];
 
         try {
-          const result = await engine.generateMedia({
-            prompt: sc.prompt,
-            expect: "video",
-            duration: sc.duration || null,
-            aspectRatio,
-            quality,
+          let result = null;
+          let lastError = null;
+          const scenePrompt = buildScenePrompt(sc, {
+            storyTitle: prompt,
             referenceImages: combinedSceneRefs,
-            onProgress: (pct, text) => {
-              store.updateStoryScene(story.id, i, {
-                progress: pct,
-                progressText: text,
-              });
-            },
+            culturalDirection,
           });
 
-          const scTargetSec = parseInt(String(sc.duration || "").replace(/[^\d]/g, ""), 10) || 0;
-          if (scTargetSec > 0 && result.localPath && fs.existsSync(result.localPath)) {
-            await trimVideo(result.localPath, scTargetSec);
+          for (let attempt = 1; attempt <= retryLimit; attempt++) {
+            try {
+              store.updateStoryScene(story.id, i, {
+                progressText: `Đang xử lý, lần thử ${attempt}/${retryLimit}...`,
+              });
+              result = await engine.generateMedia({
+                prompt:
+                  `${scenePrompt}\n\nFRESH RENDER REQUEST ID: ${story.id}-${shotNumber}-${attempt}. ` +
+                  "Create a completely new render for this request; do not reuse or return any previous media attachment.",
+                expect: isImageStory ? "image" : "video",
+                duration: isImageStory ? null : (sc.duration || null),
+                aspectRatio,
+                quality,
+                referenceImages: combinedSceneRefs,
+                accountId: selectedAccount.id,
+                onProgress: (pct, text) => {
+                  store.updateStoryScene(story.id, i, {
+                    progress: pct,
+                    progressText: `[${attempt}/${retryLimit}] ${text}`,
+                  });
+                },
+              });
+
+              const isResultValid = isImageStory
+                ? isUsableImageFile(result.localPath)
+                : isUsableVideoFile(result.localPath, 100000, expectedSceneSeconds);
+
+              if (!isResultValid) {
+                throw new Error(isImageStory ? "Muse trả về ảnh rỗng hoặc không hợp lệ." : "Muse trả về clip rỗng hoặc quá nhỏ.");
+              }
+              if (previousClipHash && sha256File(result.localPath) === previousClipHash) {
+                throw new Error("Muse Tool nhận lại đúng media cũ; chưa có media mới cho prompt này.");
+              }
+              break;
+            } catch (attemptError) {
+              lastError = attemptError;
+              result = null;
+            }
           }
+          if (!result) throw lastError || new Error("Không render được cảnh sau các lần thử.");
+
+          const scTargetSec = expectedSceneSeconds;
+          fs.copyFileSync(result.localPath, clipPath);
 
           store.updateStoryScene(story.id, i, {
             status: "completed",
             progress: 100,
-            progressText: `Hoàn tất cảnh (${scTargetSec > 0 ? `${scTargetSec}s` : (result.duration || "dynamic")})!`,
+            progressText: isImageStory ? "Hoàn tất ảnh cảnh!" : `Hoàn tất cảnh (${scTargetSec > 0 ? `${scTargetSec}s` : (result.duration || "dynamic")})!`,
             mediaUrl: result.mediaUrl,
-            localPath: result.localPath,
-            duration: scTargetSec > 0 ? `${scTargetSec}s` : (result.duration || "dynamic"),
+            localPath: clipPath,
+            duration: isImageStory ? null : (scTargetSec > 0 ? `${scTargetSec}s` : (result.duration || "dynamic")),
           });
 
-          if (result.localPath && fs.existsSync(result.localPath)) {
-            videoPaths.push(result.localPath);
-          }
+          mediaPaths.push(clipPath);
         } catch (sceneErr) {
           console.error(`[Story] Error on scene ${i + 1}:`, sceneErr);
           store.updateStoryScene(story.id, i, {
@@ -335,39 +476,58 @@ app.post("/api/story/generate", async (req, res) => {
             error: sceneErr.message,
             progressText: `Lỗi: ${sceneErr.message}`,
           });
+          failedScenes.push(i + 1);
         }
       }
 
-      if (videoPaths.length === 0) {
-        throw new Error("Không có phân cảnh nào được tạo thành công.");
+      if (mediaPaths.length !== totalScenes) {
+        throw new Error(
+          `Chưa đủ cảnh hoàn thành (${mediaPaths.length}/${totalScenes}). Cảnh lỗi: ${failedScenes.join(", ") || "không xác định"}.`
+        );
       }
 
-      // Stitch videos using ffmpeg
-      store.updateStory(story.id, {
-        progress: 90,
-        progressText: `Đang dùng FFMPEG ghép nối ${videoPaths.length} phân cảnh thành video phim hoàn chỉnh...`,
-      });
+      if (isImageStory) {
+        store.updateStory(story.id, {
+          status: "completed",
+          progress: 100,
+          progressText: `Hoàn tất toàn bộ ${mediaPaths.length} ảnh phân cảnh Storyboard!`,
+          finalImages: mediaPaths.map((p, idx) => ({
+            index: idx + 1,
+            localPath: p,
+            mediaUrl: `/media/${encodeURIComponent(path.basename(p))}`,
+            fileName: path.basename(p),
+          })),
+          completedAt: Date.now(),
+        });
+        console.log(`[Story] Hoàn tất tạo bộ ảnh phân cảnh (${mediaPaths.length} ảnh).`);
+      } else {
+        // Stitch videos using ffmpeg
+        store.updateStory(story.id, {
+          progress: 90,
+          progressText: `Đang dùng FFMPEG ghép nối ${mediaPaths.length} phân cảnh thành video phim hoàn chỉnh...`,
+        });
 
-      const cleanTitle = (prompt || "story")
-        .replace(/[<>:"/\\|?*\x00-\x1f\n\r]/g, " ")
-        .trim()
-        .slice(0, 35)
-        .replace(/\s+/g, "_");
+        const cleanTitle = (prompt || "story")
+          .replace(/[<>:"/\\|?*\x00-\x1f\n\r]/g, " ")
+          .trim()
+          .slice(0, 35)
+          .replace(/\s+/g, "_");
 
-      const finalFileName = `story_${cleanTitle}_${Date.now()}.mp4`;
-      const finalOutputPath = path.join(MEDIA_DIR, finalFileName);
+        const finalFileName = `story_${cleanTitle}_v${Date.now()}.mp4`;
+        const finalOutputPath = path.join(MEDIA_DIR, finalFileName);
 
-      await stitchVideos(videoPaths, finalOutputPath);
+        await stitchVideos(mediaPaths, finalOutputPath);
 
-      store.updateStory(story.id, {
-        status: "completed",
-        progress: 100,
-        progressText: `Hoàn tất toàn bộ Story Video! (${videoPaths.length} phân cảnh ghép lại)`,
-        finalVideoUrl: `/media/${encodeURIComponent(finalFileName)}`,
-        finalVideoPath: finalOutputPath,
-        completedAt: Date.now(),
-      });
-      console.log(`[Story] Hoàn tất ghép video: ${finalOutputPath}`);
+        store.updateStory(story.id, {
+          status: "completed",
+          progress: 100,
+          progressText: `Hoàn tất toàn bộ Story Video! (${mediaPaths.length} phân cảnh ghép lại)`,
+          finalVideoUrl: `/media/${encodeURIComponent(finalFileName)}`,
+          finalVideoPath: finalOutputPath,
+          completedAt: Date.now(),
+        });
+        console.log(`[Story] Hoàn tất ghép video: ${finalOutputPath}`);
+      }
     } catch (err) {
       console.error(`[Story] Story generation error on ${story.id}:`, err);
       store.updateStory(story.id, {
@@ -382,23 +542,338 @@ app.post("/api/story/generate", async (req, res) => {
   res.json({ ok: true, story });
 });
 
+// --- Cinematic Film Studio Endpoints (1 Conversation, Continuous Frame-to-Frame) ---
+app.get("/api/cinematic/styles", (req, res) => {
+  res.json({ ok: true, styles: CINEMATIC_STYLES, voices: CINEMATIC_VOICES });
+});
+
+app.get("/api/cinematic/voices", (req, res) => {
+  res.json({ ok: true, voices: CINEMATIC_VOICES });
+});
+
+app.post("/api/cinematic/breakdown", (req, res) => {
+  const { prompt, sceneCount = null } = req.body;
+  if (!prompt) return res.status(400).json({ ok: false, error: "Vui lòng nhập kịch bản hoặc ý tưởng phim." });
+  const scenes = breakdownCinematicScript(prompt, sceneCount);
+  res.json({ ok: true, scenes });
+});
+
+app.get("/api/cinematic", (req, res) => {
+  res.json({ ok: true, cinematics: store.cinematics });
+});
+
+app.get("/api/cinematic/:id", (req, res) => {
+  const cinematic = store.getCinematic(req.params.id);
+  if (!cinematic) return res.status(404).json({ ok: false, error: "Không tìm thấy dự án phim." });
+  res.json({ ok: true, cinematic });
+});
+
+app.delete("/api/cinematic/:id", (req, res) => {
+  const success = store.deleteCinematic(req.params.id);
+  res.json({ ok: success });
+});
+
+app.post("/api/cinematic/generate", async (req, res) => {
+  const {
+    prompt,
+    styleKey = "hollywood_35mm",
+    customStyle = "",
+    voiceKey = "natural_dialogue",
+    transition = "cut",
+    aspectRatio = "16:9",
+    quality = "2K",
+    sceneDuration = "10s",
+    commonPromptHead = "",
+    commonPromptTail = "",
+    commonPrompt = "",
+    globalReferenceImages = [],
+    scenes: customScenes,
+    accountId = "",
+  } = req.body;
+
+  if (!prompt && (!customScenes || customScenes.length === 0)) {
+    return res.status(400).json({ ok: false, error: "Vui lòng nhập kịch bản hoặc danh sách phân cảnh." });
+  }
+
+  const selectedAccount = accountId ? store.getAccount(accountId) : store.pickAccount();
+  if (!selectedAccount || selectedAccount.status !== "LIVE") {
+    return res.status(409).json({
+      ok: false,
+      error: "Không có tài khoản Muse.ai LIVE. Vui lòng đăng nhập hoặc kiểm tra tài khoản trước.",
+    });
+  }
+
+  if (!CHROME_PATH || !fs.existsSync(CHROME_PATH)) {
+    return res.status(409).json({ ok: false, error: "Không tìm thấy trình duyệt Chrome/Edge để chạy Muse automation." });
+  }
+
+  const finalScenes = (customScenes && customScenes.length > 0)
+    ? customScenes
+    : breakdownCinematicScript(prompt, 3);
+
+  const invalidSceneIndex = finalScenes.findIndex((scene) => !scene || !String(scene.prompt || "").trim());
+  if (invalidSceneIndex !== -1) {
+    return res.status(400).json({ ok: false, error: `Cảnh ${invalidSceneIndex + 1} chưa có nội dung kịch bản.` });
+  }
+
+  const cinematic = store.createCinematic({
+    prompt,
+    styleKey,
+    customStyle,
+    voiceKey,
+    transition,
+    aspectRatio,
+    quality,
+    sceneDuration,
+    commonPromptHead,
+    commonPromptTail: commonPromptTail || commonPrompt || "",
+    commonPrompt: commonPromptTail || commonPrompt || "",
+    globalReferenceImages,
+    scenes: finalScenes,
+  });
+
+  // Run Cinematic Film Generation asynchronously
+  (async () => {
+    try {
+      store.updateCinematic(cinematic.id, {
+        status: "processing",
+        progress: 5,
+        progressText: `Bắt đầu sản xuất ${cinematic.scenes.length} phân cảnh trong 1 cuộc hội thoại duy nhất...`,
+      });
+
+      const result = await engine.generateCinematicFilm({
+        cinematicId: cinematic.id,
+        prompt,
+        scenes: cinematic.scenes,
+        styleKey,
+        customStyle,
+        voiceKey,
+        transition,
+        aspectRatio,
+        quality,
+        sceneDuration,
+        commonPromptHead,
+        commonPromptTail: commonPromptTail || commonPrompt || "",
+        commonPrompt: commonPromptTail || commonPrompt || "",
+        globalReferenceImages,
+        accountId: selectedAccount.id,
+        onProgress: (pct, text) => {
+          store.updateCinematic(cinematic.id, { progress: pct, progressText: text });
+        },
+        onSceneUpdate: (sceneIdx, sceneUpdates) => {
+          store.updateCinematicScene(cinematic.id, sceneIdx, sceneUpdates);
+        },
+      });
+
+      store.updateCinematic(cinematic.id, {
+        status: "completed",
+        progress: 100,
+        progressText: `Hoàn tất toàn bộ Phim Điện Ảnh! (${result.sceneCount} cảnh)`,
+        finalVideoUrl: result.finalVideoUrl,
+        finalVideoPath: result.finalOutputPath,
+        completedAt: Date.now(),
+      });
+      console.log(`[Cinematic] Hoàn tất phim điện ảnh: ${result.finalOutputPath}`);
+    } catch (err) {
+      console.error(`[Cinematic] Error on cinematic ${cinematic.id}:`, err);
+      store.updateCinematic(cinematic.id, {
+        status: "failed",
+        error: err.message,
+        progressText: `Thất bại: ${err.message}`,
+        completedAt: Date.now(),
+      });
+    }
+  })();
+
+  res.json({ ok: true, cinematic });
+});
+
+// Render/Re-render a specific single scene in an existing Cinematic project
+app.post("/api/cinematic/:id/render-scene", async (req, res) => {
+  const { id } = req.params;
+  const {
+    sceneIndex,
+    prompt,
+    camera,
+    narration,
+    duration,
+    referenceImages,
+    commonPromptHead,
+    commonPromptTail,
+    commonPrompt,
+    accountId,
+  } = req.body;
+
+  const cinematic = store.getCinematic(id);
+  if (!cinematic) {
+    return res.status(404).json({ ok: false, error: "Không tìm thấy dự án phim." });
+  }
+
+  const sIdx = Number(sceneIndex);
+  if (isNaN(sIdx) || sIdx < 0 || !cinematic.scenes || !cinematic.scenes[sIdx]) {
+    return res.status(400).json({ ok: false, error: "Chỉ số phân cảnh không hợp lệ." });
+  }
+
+  const selectedAccount = accountId ? store.getAccount(accountId) : store.pickAccount();
+  if (!selectedAccount || selectedAccount.status !== "LIVE") {
+    return res.status(409).json({
+      ok: false,
+      error: "Không có tài khoản Muse.ai LIVE khả dụng. Vui lòng kiểm tra lại tài khoản.",
+    });
+  }
+
+  const currentScene = cinematic.scenes[sIdx];
+  const updatedSceneData = {
+    ...currentScene,
+    prompt: prompt !== undefined ? String(prompt).trim() : currentScene.prompt,
+    camera: camera !== undefined ? String(camera).trim() : currentScene.camera,
+    narration: narration !== undefined ? String(narration).trim() : currentScene.narration,
+    duration: duration || currentScene.duration || cinematic.sceneDuration || "10s",
+    referenceImages: Array.isArray(referenceImages) ? referenceImages : currentScene.referenceImages || [],
+    status: "processing",
+    progress: 5,
+    progressText: `Bắt đầu render lại Cảnh ${sIdx + 1}...`,
+  };
+
+  store.updateCinematicScene(id, sIdx, updatedSceneData);
+
+  // Run single scene render asynchronously
+  (async () => {
+    try {
+      const result = await engine.renderSingleCinematicScene({
+        cinematicId: id,
+        sceneIndex: sIdx,
+        sceneData: updatedSceneData,
+        styleKey: cinematic.styleKey,
+        customStyle: cinematic.customStyle,
+        voiceKey: cinematic.voiceKey,
+        aspectRatio: cinematic.aspectRatio,
+        quality: cinematic.quality,
+        sceneDuration: cinematic.sceneDuration,
+        commonPromptHead: commonPromptHead !== undefined ? commonPromptHead : cinematic.commonPromptHead || "",
+        commonPromptTail: commonPromptTail !== undefined ? commonPromptTail : (cinematic.commonPromptTail || cinematic.commonPrompt || ""),
+        commonPrompt: commonPromptTail !== undefined ? commonPromptTail : (cinematic.commonPromptTail || cinematic.commonPrompt || ""),
+        globalReferenceImages: cinematic.globalReferenceImages,
+        accountId: selectedAccount.id,
+        onProgress: (pct, text) => {
+          store.updateCinematicScene(id, sIdx, { progress: pct, progressText: text });
+        },
+      });
+
+      store.updateCinematicScene(id, sIdx, {
+        status: "completed",
+        progress: 100,
+        progressText: `Hoàn tất Cảnh ${sIdx + 1}!`,
+        mediaUrl: result.mediaUrl,
+        localPath: result.localPath,
+        duration: result.duration,
+      });
+      console.log(`[Cinematic] Đã render lại thành công Cảnh ${sIdx + 1} của dự án ${id}: ${result.localPath}`);
+    } catch (err) {
+      console.error(`[Cinematic] Lỗi render lại Cảnh ${sIdx + 1} của ${id}:`, err);
+      store.updateCinematicScene(id, sIdx, {
+        status: "failed",
+        progressText: `Lỗi: ${err.message}`,
+        error: err.message,
+      });
+    }
+  })();
+
+  res.json({ ok: true, scene: store.getCinematic(id).scenes[sIdx] });
+});
+
+// Stitch selected scenes (or all completed scenes) into a final movie
+app.post("/api/cinematic/:id/stitch", async (req, res) => {
+  const { id } = req.params;
+  const { selectedSceneIndices, transition = "cut" } = req.body;
+
+  const cinematic = store.getCinematic(id);
+  if (!cinematic) {
+    return res.status(404).json({ ok: false, error: "Không tìm thấy dự án phim." });
+  }
+
+  let scenesToStitch = (cinematic.scenes || []).filter(
+    (s) => s.localPath && fs.existsSync(s.localPath)
+  );
+
+  if (Array.isArray(selectedSceneIndices) && selectedSceneIndices.length > 0) {
+    const set = new Set(selectedSceneIndices.map(Number));
+    scenesToStitch = (cinematic.scenes || []).filter(
+      (s, idx) => set.has(idx) && s.localPath && fs.existsSync(s.localPath)
+    );
+  }
+
+  if (scenesToStitch.length === 0) {
+    return res.status(400).json({
+      ok: false,
+      error: "Không có phân cảnh nào đã hoàn tất để ghép. Hãy render các cảnh trước khi ghép video.",
+    });
+  }
+
+  try {
+    const videoPaths = scenesToStitch.map((s) => s.localPath);
+    const cleanTitle = (cinematic.prompt || "cinematic_film")
+      .replace(/[<>:"/\\|?*\x00-\x1f\n\r]/g, " ")
+      .trim()
+      .slice(0, 30)
+      .replace(/\s+/g, "_");
+
+    const finalFileName = `cinematic_${cleanTitle}_stitched_${Date.now()}.mp4`;
+    const finalOutputPath = path.join(MEDIA_DIR, finalFileName);
+
+    await stitchVideos(videoPaths, finalOutputPath, {
+      transition: transition || "cut",
+      transitionDuration: 0.35,
+      skipHeadFramesSec: 0.08,
+    });
+
+    const finalVideoUrl = `/media/${encodeURIComponent(finalFileName)}`;
+    store.updateCinematic(id, {
+      finalVideoUrl,
+      finalVideoPath: finalOutputPath,
+      status: "completed",
+      progress: 100,
+      progressText: `Đã ghép thành công ${videoPaths.length} phân cảnh hoàn chỉnh!`,
+      completedAt: Date.now(),
+    });
+
+    res.json({
+      ok: true,
+      finalVideoUrl,
+      finalOutputPath,
+      sceneCount: videoPaths.length,
+      cinematic: store.getCinematic(id),
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // --- Media Gallery ---
 app.get("/api/media", (req, res) => {
   try {
     const files = fs.readdirSync(MEDIA_DIR).filter((f) => !f.startsWith("."));
-    const items = files.map((f) => {
-      const full = path.join(MEDIA_DIR, f);
-      const stat = fs.statSync(full);
-      const ext = path.extname(f).toLowerCase();
-      const isVideo = ext === ".mp4" || ext === ".webm";
-      return {
-        fileName: f,
-        url: `/media/${encodeURIComponent(f)}`,
-        isVideo,
-        size: stat.size,
-        createdAt: stat.mtimeMs,
-      };
-    });
+    const items = files
+      .filter((f) => {
+        try {
+          return fs.statSync(path.join(MEDIA_DIR, f)).isFile();
+        } catch (_e) {
+          return false;
+        }
+      })
+      .map((f) => {
+        const full = path.join(MEDIA_DIR, f);
+        const stat = fs.statSync(full);
+        const ext = path.extname(f).toLowerCase();
+        const isVideo = ext === ".mp4" || ext === ".webm";
+        return {
+          fileName: f,
+          url: `/media/${encodeURIComponent(f)}`,
+          isVideo,
+          size: stat.size,
+          createdAt: stat.mtimeMs,
+        };
+      });
     items.sort((a, b) => b.createdAt - a.createdAt);
     res.json({ ok: true, media: items });
   } catch (err) {
@@ -411,7 +886,11 @@ app.delete("/api/media/:filename", (req, res) => {
   const target = path.join(MEDIA_DIR, safeName);
   if (fs.existsSync(target)) {
     try {
-      fs.unlinkSync(target);
+      if (fs.statSync(target).isDirectory()) {
+        fs.rmSync(target, { recursive: true, force: true });
+      } else {
+        fs.unlinkSync(target);
+      }
       return res.json({ ok: true });
     } catch (err) {
       return res.status(500).json({ ok: false, error: err.message });

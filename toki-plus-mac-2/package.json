@@ -21,7 +21,7 @@
     "node-dpapi-prebuilt": "^1.0.4"
   },
   "scripts": {
-    "start": "electron .",
+    "start": "node standard-web/server.js",
     "start:electron": "electron .",
     "start:standard-web": "node standard-web/server.js",
     "test:standard-web": "node --test standard-web/test/*.test.js",

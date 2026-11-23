@@ -1,13 +1,17 @@
 "use strict";
 
-let currentTab = "studio";
+let currentTab = "cinematic";
 let currentType = "video";
 let referenceImages = [];
 let storyReferenceImages = [];
+let cineGlobalReferenceImages = [];
 let activePollingTaskId = null;
 let activeStoryPollingId = null;
+let activeCinePollingId = null;
 let currentStoryScenes = [];
+let currentCineScenes = [];
 let activeFocusedSceneIdx = null;
+let activeFocusedCineSceneIdx = null;
 
 // Toast helper
 function showToast(msg, type = "info") {
@@ -34,6 +38,7 @@ document.querySelectorAll(".nav-btn").forEach((btn) => {
     const pane = document.getElementById(`pane-${target}`);
     if (pane) pane.classList.add("active");
 
+    if (target === "cinematic") renderCineSceneRows();
     if (target === "story") renderStorySceneRows();
     if (target === "accounts") loadAccounts();
     if (target === "media") loadMedia();
@@ -45,7 +50,7 @@ document.querySelectorAll(".nav-btn").forEach((btn) => {
 // ==========================================
 // PASTE & DRAG-AND-DROP IMAGE HANDLERS
 // ==========================================
-function processImageFile(file, isStory = false, targetSceneIdx = null) {
+function processImageFile(file, isStory = false, targetSceneIdx = null, isCinematic = false) {
   if (!file || !file.type.startsWith("image/")) return;
   const reader = new FileReader();
   reader.onload = (evt) => {
@@ -53,10 +58,24 @@ function processImageFile(file, isStory = false, targetSceneIdx = null) {
     const item = {
       name: file.name || `paste_${Date.now()}.png`,
       b64,
-      role: isStory ? "character" : "product",
+      role: (isStory || isCinematic) ? "character" : "product",
     };
 
-    if (isStory) {
+    if (isCinematic) {
+      const sIdx = targetSceneIdx !== null ? targetSceneIdx : activeFocusedCineSceneIdx;
+      if (sIdx !== null && currentCineScenes && currentCineScenes[sIdx]) {
+        if (!currentCineScenes[sIdx].referenceImages) {
+          currentCineScenes[sIdx].referenceImages = [];
+        }
+        currentCineScenes[sIdx].referenceImages.push(item);
+        renderCineSceneRefPreviews(sIdx);
+        showToast(`📋 Đã thêm ảnh tham chiếu cho Cảnh ${sIdx + 1}: ${item.name}`, "success");
+      } else {
+        cineGlobalReferenceImages.push(item);
+        renderCineGlobalRefPreviews();
+        showToast(`📋 Đã thêm ảnh tham chiếu CHUNG toàn bộ phim: ${item.name}`, "success");
+      }
+    } else if (isStory) {
       const sIdx = targetSceneIdx !== null ? targetSceneIdx : activeFocusedSceneIdx;
       if (sIdx !== null && currentStoryScenes && currentStoryScenes[sIdx]) {
         if (!currentStoryScenes[sIdx].referenceImages) {
@@ -88,8 +107,13 @@ window.addEventListener("paste", (e) => {
     if (item.type.indexOf("image") !== -1) {
       const file = item.getAsFile();
       if (file) {
-        const isStory = currentTab === "story";
-        processImageFile(file, isStory);
+        if (currentTab === "cinematic") {
+          processImageFile(file, false, null, true);
+        } else if (currentTab === "story") {
+          processImageFile(file, true, null, false);
+        } else {
+          processImageFile(file, false, null, false);
+        }
         hasImage = true;
       }
     }
@@ -100,7 +124,7 @@ window.addEventListener("paste", (e) => {
 });
 
 // Setup dropzone helpers
-function setupDropzone(zoneEl, inputEl, browseLinkEl, isStory = false) {
+function setupDropzone(zoneEl, inputEl, browseLinkEl, mode = "studio") {
   if (!zoneEl || !inputEl) return;
 
   if (browseLinkEl) {
@@ -115,7 +139,10 @@ function setupDropzone(zoneEl, inputEl, browseLinkEl, isStory = false) {
 
   // Function to set focus state on dropzone without opening file dialog
   const activateZoneFocus = () => {
-    if (isStory) {
+    if (mode === "cinematic") {
+      activeFocusedCineSceneIdx = null; // Clear active scene so paste targets global cinematic reference images
+      document.querySelectorAll(".story-scene-row").forEach((r) => r.classList.remove("focused"));
+    } else if (mode === "story") {
       activeFocusedSceneIdx = null; // Clear active scene so paste targets global story reference images
       document.querySelectorAll(".story-scene-row").forEach((r) => r.classList.remove("focused"));
     }
@@ -136,7 +163,9 @@ function setupDropzone(zoneEl, inputEl, browseLinkEl, isStory = false) {
   });
 
   inputEl.addEventListener("change", (e) => {
-    Array.from(e.target.files).forEach((file) => processImageFile(file, isStory));
+    const isCinematic = mode === "cinematic";
+    const isStory = mode === "story";
+    Array.from(e.target.files).forEach((file) => processImageFile(file, isStory, null, isCinematic));
     inputEl.value = "";
   });
 
@@ -153,24 +182,33 @@ function setupDropzone(zoneEl, inputEl, browseLinkEl, isStory = false) {
     e.preventDefault();
     zoneEl.classList.remove("dragover");
     if (e.dataTransfer?.files) {
-      Array.from(e.dataTransfer.files).forEach((file) => processImageFile(file, isStory));
+      const isCinematic = mode === "cinematic";
+      const isStory = mode === "story";
+      Array.from(e.dataTransfer.files).forEach((file) => processImageFile(file, isStory, null, isCinematic));
     }
   });
 }
 
-// Initialize Dropzones for Studio & Story
+// Initialize Dropzones for Studio, Story & Cinematic
 setupDropzone(
   document.getElementById("studioPasteZone"),
   document.getElementById("refImageInput"),
   document.getElementById("studioBrowseLink"),
-  false
+  "studio"
 );
 
 setupDropzone(
   document.getElementById("storyPasteZone"),
   document.getElementById("storyRefInput"),
   document.getElementById("storyBrowseLink"),
-  true
+  "story"
+);
+
+setupDropzone(
+  document.getElementById("cineGlobalPasteZone"),
+  document.getElementById("cineGlobalRefInput"),
+  document.getElementById("cineGlobalBrowseBtn"),
+  "cinematic"
 );
 
 // Render Studio Reference Previews
@@ -399,6 +437,7 @@ async function loadAccounts() {
         <td>
           <button class="btn btn-primary btn-sm" onclick="loginAccount('${acc.id}')">🔑 Đăng nhập Chrome</button>
           <button class="btn btn-secondary btn-sm" onclick="verifyAccount('${acc.id}')">🔄 Kiểm tra</button>
+          <button class="btn btn-warning btn-sm" onclick="logoutAccount('${acc.id}')">🚪 Đăng xuất</button>
           <button class="btn btn-danger btn-sm" onclick="deleteAccount('${acc.id}')">🗑️ Xóa</button>
         </td>
       `;
@@ -456,6 +495,45 @@ window.verifyAccount = async function (id) {
     showToast(err.message, "error");
   }
 };
+
+window.logoutAccount = async function (id) {
+  if (!confirm("Bạn có chắc chắn muốn đăng xuất tài khoản này?")) return;
+  try {
+    showToast("Đang đăng xuất tài khoản...");
+    const res = await fetch(`/api/accounts/${id}/logout`, { method: "POST" });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(data.message, "success");
+      loadAccounts();
+      checkStatus();
+    } else {
+      showToast(data.error, "error");
+    }
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+};
+
+const btnLogoutAllAccounts = document.getElementById("btnLogoutAllAccounts");
+if (btnLogoutAllAccounts) {
+  btnLogoutAllAccounts.addEventListener("click", async () => {
+    if (!confirm("Bạn có chắc chắn muốn đăng xuất TẤT CẢ các tài khoản Muse.ai?")) return;
+    try {
+      showToast("Đang đăng xuất tất cả tài khoản...");
+      const res = await fetch("/api/accounts/logout-all", { method: "POST" });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(data.message, "success");
+        loadAccounts();
+        checkStatus();
+      } else {
+        showToast(data.error, "error");
+      }
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  });
+}
 
 window.deleteAccount = async function (id) {
   if (!confirm("Bạn có chắc chắn muốn xóa tài khoản này và toàn bộ profile dữ liệu?")) return;
@@ -692,6 +770,13 @@ function renderStorySceneRows() {
     const promptTextarea = row.querySelector(".scene-prompt-input");
     promptTextarea.addEventListener("input", (e) => {
       sc.prompt = e.target.value;
+      const dMatch = sc.prompt.match(/(?:thời lượng|duration|thời gian)[:\s—–-]*(\d+)\s*(?:giây|s|sec|seconds)?\b/i);
+      if (dMatch && dMatch[1]) {
+        sc.duration = `${dMatch[1]}s`;
+        const durPill = row.querySelector(".scene-duration-pill");
+        if (durPill) durPill.innerText = `⏱️ ${sc.duration}`;
+        updateCineSceneCountBadge();
+      }
     });
 
     const activateSceneFocus = () => {
@@ -1008,8 +1093,675 @@ function pollStory(storyId) {
   }, 2000);
 }
 
+// ==========================================
+// CINEMATIC FILM STUDIO (1 Conversation, Frame Continuity)
+// ==========================================
+const btnCineBreakdown = document.getElementById("btnCineBreakdown");
+const btnCineAddSceneTop = document.getElementById("btnCineAddSceneTop");
+const btnCineAddSceneBottom = document.getElementById("btnCineAddSceneBottom");
+const cineSceneRowsList = document.getElementById("cineSceneRowsList");
+const cineSceneCountBadge = document.getElementById("cineSceneCountBadge");
+const btnGenerateCinematic = document.getElementById("btnGenerateCinematic");
+const cineProgressBox = document.getElementById("cineProgressBox");
+const cineProgressBar = document.getElementById("cineProgressBar");
+const cineProgressText = document.getElementById("cineProgressText");
+const cineProgressPercent = document.getElementById("cineProgressPercent");
+const cineSceneBoard = document.getElementById("cineSceneBoard");
+const cineSceneCardsList = document.getElementById("cineSceneCardsList");
+const cineResultContainer = document.getElementById("cineResultContainer");
+const cineResultActions = document.getElementById("cineResultActions");
+const btnDownloadCine = document.getElementById("btnDownloadCine");
+const btnCopyCineUrl = document.getElementById("btnCopyCineUrl");
+
+// Global Reference Previews for Cinematic
+function renderCineGlobalRefPreviews() {
+  const list = document.getElementById("cineGlobalRefPreviewList");
+  if (!list) return;
+  list.innerHTML = "";
+  cineGlobalReferenceImages.forEach((img, idx) => {
+    const thumb = document.createElement("div");
+    thumb.className = "ref-thumb";
+    thumb.innerHTML = `
+      <img src="${img.b64}" alt="${img.name}" />
+      <span class="role-badge" title="Bấm để đổi vai trò" onclick="toggleCineGlobalRole(${idx})">${img.role === "character" ? "Nhân vật" : "Phong cách"}</span>
+      <button type="button" class="remove-btn" onclick="removeCineGlobalRef(${idx})">×</button>
+    `;
+    list.appendChild(thumb);
+  });
+}
+
+window.removeCineGlobalRef = function (idx) {
+  cineGlobalReferenceImages.splice(idx, 1);
+  renderCineGlobalRefPreviews();
+};
+
+window.toggleCineGlobalRole = function (idx) {
+  if (cineGlobalReferenceImages[idx]) {
+    cineGlobalReferenceImages[idx].role =
+      cineGlobalReferenceImages[idx].role === "character" ? "style" : "character";
+    renderCineGlobalRefPreviews();
+  }
+};
+
+// Default scenes for Cinematic Film
+if (!currentCineScenes || currentCineScenes.length === 0) {
+  currentCineScenes = [
+    {
+      title: "Cảnh 1",
+      camera: "",
+      prompt: "",
+      narration: "",
+      referenceImages: [],
+    },
+    {
+      title: "Cảnh 2",
+      camera: "",
+      prompt: "",
+      narration: "",
+      referenceImages: [],
+    },
+    {
+      title: "Cảnh 3",
+      camera: "",
+      prompt: "",
+      narration: "",
+      referenceImages: [],
+    },
+  ];
+}
+
+function updateCineSceneCountBadge() {
+  if (!cineSceneCountBadge) return;
+  const totalSec = currentCineScenes.reduce((acc, sc) => {
+    const s = parseInt(String(sc.duration || "10s").replace(/[^\d]/g, ""), 10) || 10;
+    return acc + s;
+  }, 0);
+  cineSceneCountBadge.innerText = `${currentCineScenes.length} cảnh (Tổng ${totalSec}s)`;
+}
+
+function renderCineSceneRows() {
+  if (!cineSceneRowsList) return;
+  cineSceneRowsList.innerHTML = "";
+
+  currentCineScenes.forEach((sc, idx) => {
+    if (!sc.referenceImages) sc.referenceImages = [];
+    const row = document.createElement("div");
+    row.className = `story-scene-row ${activeFocusedCineSceneIdx === idx ? "focused" : ""}`;
+    row.id = `cine_row_${idx}`;
+    row.dataset.idx = idx;
+
+    const roleTag =
+      idx === 0
+        ? "🌟 Mở màn (Act 1)"
+        : idx === currentCineScenes.length - 1
+        ? "🎬 Kết thúc (Act 3)"
+        : `⚡ Cảnh ${idx + 1} (Act 2)`;
+
+    const mediaPreviewBtn = sc.mediaUrl
+      ? `<a href="${sc.mediaUrl}" target="_blank" class="scene-card-preview-btn">▶️ Xem clip</a>`
+      : "";
+
+    row.innerHTML = `
+      <div class="scene-row-header">
+        <div class="scene-badge" style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" class="cine-stitch-check" data-idx="${idx}" checked title="Chọn cảnh này khi ghép phim" />
+          <span class="scene-num" style="background: linear-gradient(135deg, #f59e0b, #ef4444);">Cảnh ${idx + 1}</span>
+          <input type="text" class="scene-title-input" value="${sc.title || `Cảnh ${idx + 1}`}" placeholder="Tên cảnh (VD: Cảnh ${idx + 1})" data-idx="${idx}" />
+        </div>
+        <div class="scene-meta-tools">
+          <span class="continuity-pill scene-duration-pill" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-weight: 600;">⏱️ ${sc.duration || "10s"}</span>
+          <span class="continuity-pill">${roleTag}</span>
+          <button type="button" class="btn-render-single-scene" onclick="triggerRenderSingleScene(${idx})" title="Render lại riêng cảnh này">🔄 Render cảnh này</button>
+          ${mediaPreviewBtn}
+          <button type="button" class="btn btn-danger btn-sm btn-remove-row" onclick="removeCineSceneRow(${idx})" title="Xóa cảnh này">🗑️</button>
+        </div>
+      </div>
+
+      <div class="scene-row-content">
+        <div style="margin-bottom: 6px;">
+          <label style="font-size: 11px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">🎬 Kịch bản, Hành động &amp; Góc máy quay Cảnh ${idx + 1}:</label>
+          <textarea rows="4" class="scene-prompt-input" data-idx="${idx}" placeholder="Mô tả kịch bản, hành động nhân vật và góc máy quay (toàn cảnh, trung cảnh, cận cảnh, chuyển động camera) cho Cảnh ${idx + 1}...">${sc.prompt || ""}</textarea>
+        </div>
+
+        <div style="margin-bottom: 6px;">
+          <label style="font-size: 11px; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">🗣️ Lời thoại / Thuyết minh của cảnh này (Voiceover / Dialogue - tùy chọn):</label>
+          <input type="text" class="scene-narration-input" value="${sc.narration || ""}" placeholder="VD: Lời thoại nhân vật..." data-idx="${idx}" />
+        </div>
+        
+        <div class="scene-ref-section">
+          <div class="scene-ref-header">
+            <span>📎 Ảnh tham chiếu riêng Cảnh ${idx + 1} (${sc.referenceImages.length}):</span>
+            <span class="sub-hint">Bấm khung rồi nhấn <b>Ctrl+V</b> để dán</span>
+          </div>
+          <div class="scene-ref-zone" data-idx="${idx}" tabindex="0">
+            <span>➕ Bấm khung để dán ảnh riêng Cảnh ${idx + 1} (Ctrl+V)</span>
+            <button type="button" class="btn-browse-sm cine-scene-browse-btn" data-idx="${idx}">📁 Chọn file</button>
+            <input type="file" accept="image/*" multiple style="display: none;" class="cine-scene-file-input" data-idx="${idx}">
+          </div>
+          <div class="scene-ref-previews" id="cineSceneRefList_${idx}"></div>
+        </div>
+      </div>
+    `;
+
+    // Input handlers
+    const titleInput = row.querySelector(".scene-title-input");
+    titleInput.addEventListener("input", (e) => {
+      sc.title = e.target.value;
+    });
+
+    const promptTextarea = row.querySelector(".scene-prompt-input");
+    promptTextarea.addEventListener("input", (e) => {
+      sc.prompt = e.target.value;
+      const dMatch = sc.prompt.match(/(?:thời lượng|duration|thời gian)[:\s—–-]*(\d+)\s*(?:giây|s|sec|seconds)?\b/i);
+      if (dMatch && dMatch[1]) {
+        sc.duration = `${dMatch[1]}s`;
+        const durPill = row.querySelector(".scene-duration-pill");
+        if (durPill) durPill.innerText = `⏱️ ${sc.duration}`;
+        updateCineSceneCountBadge();
+      }
+    });
+
+    const narrationInput = row.querySelector(".scene-narration-input");
+    if (narrationInput) {
+      narrationInput.addEventListener("input", (e) => {
+        sc.narration = e.target.value;
+      });
+    }
+
+    const activateCineFocus = () => {
+      document.querySelectorAll(".story-scene-row").forEach((r) => r.classList.remove("focused"));
+      document.querySelectorAll(".paste-dropzone").forEach((z) => z.classList.remove("focused"));
+      row.classList.add("focused");
+      activeFocusedCineSceneIdx = idx;
+    };
+
+    promptTextarea.addEventListener("focus", activateCineFocus);
+    if (narrationInput) narrationInput.addEventListener("focus", activateCineFocus);
+
+    // Dropzone for scene-specific reference images
+    const zone = row.querySelector(".scene-ref-zone");
+    const fileInput = row.querySelector(".cine-scene-file-input");
+    const browseBtn = row.querySelector(".cine-scene-browse-btn");
+
+    if (browseBtn) {
+      browseBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.click();
+      });
+    }
+
+    zone.addEventListener("click", (e) => {
+      if (e.target !== browseBtn && !browseBtn?.contains(e.target)) {
+        activateCineFocus();
+        zone.focus();
+      }
+    });
+
+    zone.addEventListener("focus", activateCineFocus);
+    fileInput.addEventListener("click", (e) => e.stopPropagation());
+    fileInput.addEventListener("change", (e) => {
+      Array.from(e.target.files).forEach((file) => processImageFile(file, false, idx, true));
+      fileInput.value = "";
+    });
+
+    zone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      zone.classList.add("dragover");
+    });
+    zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+    zone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.classList.remove("dragover");
+      if (e.dataTransfer?.files) {
+        Array.from(e.dataTransfer.files).forEach((file) => processImageFile(file, false, idx, true));
+      }
+    });
+
+    cineSceneRowsList.appendChild(row);
+    renderCineSceneRefPreviews(idx);
+  });
+
+  updateCineSceneCountBadge();
+}
+
+function renderCineSceneRefPreviews(sIdx) {
+  const container = document.getElementById(`cineSceneRefList_${sIdx}`);
+  if (!container || !currentCineScenes[sIdx]) return;
+  container.innerHTML = "";
+  const refs = currentCineScenes[sIdx].referenceImages || [];
+
+  refs.forEach((img, imgIdx) => {
+    const thumb = document.createElement("div");
+    thumb.className = "scene-ref-thumb";
+    thumb.innerHTML = `
+      <img src="${img.b64}" alt="${img.name}" />
+      <button type="button" class="remove-btn" onclick="removeCineSceneRef(${sIdx}, ${imgIdx})">×</button>
+    `;
+    container.appendChild(thumb);
+  });
+}
+
+window.removeCineSceneRef = function (sIdx, imgIdx) {
+  if (currentCineScenes[sIdx] && currentCineScenes[sIdx].referenceImages) {
+    currentCineScenes[sIdx].referenceImages.splice(imgIdx, 1);
+    renderCineSceneRefPreviews(sIdx);
+  }
+};
+
+window.removeCineSceneRow = function (idx) {
+  if (currentCineScenes.length <= 1) {
+    return showToast("Cần giữ lại ít nhất 1 phân cảnh điện ảnh!", "warning");
+  }
+  currentCineScenes.splice(idx, 1);
+  if (activeFocusedCineSceneIdx === idx) activeFocusedCineSceneIdx = null;
+  renderCineSceneRows();
+  showToast("Đã xóa phân cảnh.");
+};
+
+function addCineSceneRow(defaultData = null) {
+  const nextNum = currentCineScenes.length + 1;
+  const newScene = defaultData || {
+    title: `Cảnh ${nextNum}`,
+    camera: "",
+    prompt: "",
+    narration: "",
+    referenceImages: [],
+  };
+  currentCineScenes.push(newScene);
+  activeFocusedCineSceneIdx = currentCineScenes.length - 1;
+  renderCineSceneRows();
+
+  setTimeout(() => {
+    const newRow = document.getElementById(`cine_row_${currentCineScenes.length - 1}`);
+    if (newRow) {
+      newRow.scrollIntoView({ behavior: "smooth", block: "center" });
+      const ta = newRow.querySelector(".scene-prompt-input");
+      if (ta) ta.focus();
+    }
+  }, 100);
+}
+
+if (btnCineAddSceneTop) btnCineAddSceneTop.addEventListener("click", () => addCineSceneRow());
+if (btnCineAddSceneBottom) btnCineAddSceneBottom.addEventListener("click", () => addCineSceneRow());
+
+// Auto Breakdown for Cinematic Script
+if (btnCineBreakdown) {
+  btnCineBreakdown.addEventListener("click", async () => {
+    const prompt = document.getElementById("cinePromptInput").value.trim();
+    if (!prompt) return showToast("Vui lòng nhập cốt truyện/kịch bản vào ô phía trên!", "error");
+
+    const countSelect = document.getElementById("cineSceneCountSelect");
+    const sceneCount = countSelect && countSelect.value !== "auto" ? parseInt(countSelect.value, 10) : null;
+
+    btnCineBreakdown.disabled = true;
+    btnCineBreakdown.innerText = "Đang phân tích kịch bản điện ảnh...";
+
+    try {
+      const res = await fetch("/api/cinematic/breakdown", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, sceneCount }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+
+      currentCineScenes = (data.scenes || []).map((s) => ({
+        title: s.title || `Cảnh ${s.index}`,
+        camera: "",
+        prompt: s.prompt || "",
+        narration: s.narration || "",
+        duration: s.duration || "10s",
+        referenceImages: [],
+      }));
+
+      renderCineSceneRows();
+      showToast(`🪄 Shotcraft AI đã tự động phân cảnh điện ảnh (${currentCineScenes.length} cảnh • 10s)!`, "success");
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      btnCineBreakdown.disabled = false;
+      btnCineBreakdown.innerText = "🪄 Phân cảnh Shotcraft AI (10s • Dynamic)";
+    }
+  });
+}
+
+// Start Cinematic Generation
+if (btnGenerateCinematic) {
+  btnGenerateCinematic.addEventListener("click", async () => {
+    const masterPrompt = document.getElementById("cinePromptInput").value.trim();
+    const commonPromptHead = document.getElementById("cineCommonPromptHeadInput") ? document.getElementById("cineCommonPromptHeadInput").value.trim() : "";
+    const commonPromptTail = document.getElementById("cineCommonPromptTailInput") ? document.getElementById("cineCommonPromptTailInput").value.trim() : "";
+    const validScenes = currentCineScenes.filter((s) => s.prompt && s.prompt.trim());
+    if (validScenes.length === 0) {
+      return showToast("Vui lòng nhập kịch bản cho ít nhất 1 phân cảnh!", "error");
+    }
+
+    const voiceKey = document.getElementById("cineVoiceSelect") ? document.getElementById("cineVoiceSelect").value : "natural_dialogue";
+    const transition = document.getElementById("cineTransitionSelect") ? document.getElementById("cineTransitionSelect").value : "cut";
+    const aspectRatio = document.getElementById("cineAspectRatioSelect").value;
+    const quality = document.getElementById("cineQualitySelect").value;
+    const sceneDuration = document.getElementById("cineDurationSelect").value;
+
+    btnGenerateCinematic.disabled = true;
+    cineProgressBox.classList.remove("hidden");
+    cineSceneBoard.classList.remove("hidden");
+    cineResultActions.classList.add("hidden");
+    cineProgressBar.style.width = "5%";
+    cineProgressPercent.innerText = "5%";
+    cineProgressText.innerText = "Đang mở 1 cuộc hội thoại duy nhất trên Muse.ai...";
+
+    try {
+      const res = await fetch("/api/cinematic/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: masterPrompt || currentCineScenes[0]?.prompt || "Cinematic Film",
+          voiceKey,
+          transition,
+          aspectRatio,
+          quality,
+          sceneDuration,
+          commonPromptHead,
+          commonPromptTail,
+          commonPrompt: commonPromptTail,
+          globalReferenceImages: cineGlobalReferenceImages,
+          scenes: currentCineScenes,
+        }),
+      });
+
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+
+      const cinematicId = data.cinematic.id;
+      activeCinePollingId = cinematicId;
+      renderCineSceneCards(data.cinematic.scenes);
+      pollCinematic(cinematicId);
+    } catch (err) {
+      showToast(err.message, "error");
+      btnGenerateCinematic.disabled = false;
+      cineProgressBox.classList.add("hidden");
+    }
+  });
+}
+
+function renderCineSceneCards(scenes) {
+  cineSceneCardsList.innerHTML = "";
+  scenes.forEach((sc, idx) => {
+    const card = document.createElement("div");
+    card.className = `cine-scene-card ${sc.status || "queued"}`;
+    card.id = `cine_sc_card_${sc.id || idx}`;
+
+    const badgeText =
+      sc.status === "completed"
+        ? `✅ Hoàn tất${sc.duration ? ` (${sc.duration})` : ""}`
+        : sc.status === "processing"
+        ? "⏳ Đang render..."
+        : sc.status === "failed"
+        ? "❌ Lỗi"
+        : "Chờ";
+
+    let mediaHtml = "";
+    if (sc.mediaUrl) {
+      mediaHtml = `
+        <video src="${sc.mediaUrl}" controls class="cine-card-video" preload="metadata"></video>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="cine-card-main">
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <input type="checkbox" class="cine-stitch-check" data-idx="${idx}" checked title="Chọn cảnh này khi ghép phim" />
+          <span class="cine-card-title">🎬 ${sc.title || `Cảnh ${idx + 1}`}</span>
+        </label>
+        <span class="cine-card-status">${badgeText}</span>
+      </div>
+      ${mediaHtml}
+      <div class="cine-card-actions">
+        <button type="button" class="btn-render-single-scene" onclick="triggerRenderSingleScene(${idx})">🔄 Render lại</button>
+        ${sc.mediaUrl ? `<a href="${sc.mediaUrl}" target="_blank" class="scene-card-preview-btn">Tải clip</a>` : ""}
+      </div>
+    `;
+    cineSceneCardsList.appendChild(card);
+  });
+}
+
+// Re-render a single specific scene
+window.triggerRenderSingleScene = async function (idx) {
+  const sc = currentCineScenes[idx];
+  if (!sc) return;
+
+  const row = document.getElementById(`cine_row_${idx}`);
+  if (row) {
+    const promptInput = row.querySelector(".scene-prompt-input");
+    const narrationInput = row.querySelector(".scene-narration-input");
+    if (promptInput) sc.prompt = promptInput.value.trim();
+    if (narrationInput) sc.narration = narrationInput.value.trim();
+  }
+
+  if (!sc.prompt) {
+    return showToast(`Cảnh ${idx + 1} chưa có prompt!`, "error");
+  }
+
+  const voiceKey = document.getElementById("cineVoiceSelect") ? document.getElementById("cineVoiceSelect").value : "natural_dialogue";
+  const commonPromptHead = document.getElementById("cineCommonPromptHeadInput") ? document.getElementById("cineCommonPromptHeadInput").value.trim() : "";
+  const commonPromptTail = document.getElementById("cineCommonPromptTailInput") ? document.getElementById("cineCommonPromptTailInput").value.trim() : "";
+  const aspectRatio = document.getElementById("cineAspectRatioSelect") ? document.getElementById("cineAspectRatioSelect").value : "16:9";
+  const quality = document.getElementById("cineQualitySelect") ? document.getElementById("cineQualitySelect").value : "2K";
+  const sceneDuration = document.getElementById("cineDurationSelect") ? document.getElementById("cineDurationSelect").value : "10s";
+
+  showToast(`⏳ Bắt đầu render riêng Cảnh ${idx + 1}...`, "info");
+  cineProgressBox.classList.remove("hidden");
+  cineSceneBoard.classList.remove("hidden");
+
+  try {
+    let projectId = activeCinePollingId;
+
+    if (!projectId) {
+      // If no project exists yet, generate project with current scenes
+      const createRes = await fetch("/api/cinematic/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: document.getElementById("cinePromptInput") ? document.getElementById("cinePromptInput").value.trim() : "",
+          voiceKey,
+          aspectRatio,
+          quality,
+          sceneDuration,
+          commonPromptHead,
+          commonPromptTail,
+          commonPrompt: commonPromptTail,
+          globalReferenceImages: cineGlobalReferenceImages,
+          scenes: currentCineScenes,
+        }),
+      });
+      const createData = await createRes.json();
+      if (!createData.ok) throw new Error(createData.error);
+      projectId = createData.cinematic.id;
+      activeCinePollingId = projectId;
+      renderCineSceneCards(createData.cinematic.scenes);
+      pollCinematic(projectId);
+      return;
+    }
+
+    const res = await fetch(`/api/cinematic/${projectId}/render-scene`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sceneIndex: idx,
+        prompt: sc.prompt,
+        camera: sc.camera,
+        narration: sc.narration,
+        duration: sc.duration || sceneDuration,
+        commonPromptHead,
+        commonPromptTail,
+        commonPrompt: commonPromptTail,
+        referenceImages: sc.referenceImages || [],
+      }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    showToast(`⏳ Đang render lại Cảnh ${idx + 1}...`, "info");
+    pollCinematic(projectId);
+  } catch (err) {
+    showToast(`Lỗi: ${err.message}`, "error");
+  }
+};
+
+// Stitch selected scenes into final movie
+window.triggerStitchSelectedScenes = async function () {
+  const projectId = activeCinePollingId;
+  if (!projectId) {
+    return showToast("Chưa có dự án nào đang chạy. Vui lòng bấm 'Bắt đầu sản xuất' hoặc 'Render cảnh này' trước!", "warning");
+  }
+
+  const checkboxes = document.querySelectorAll(".cine-stitch-check:checked");
+  const selectedIndices = [];
+  checkboxes.forEach((cb) => {
+    const idx = parseInt(cb.dataset.idx, 10);
+    if (!isNaN(idx)) selectedIndices.push(idx);
+  });
+
+  const uniqueIndices = [...new Set(selectedIndices)].sort((a, b) => a - b);
+  const transition = document.getElementById("cineTransitionSelect")
+    ? document.getElementById("cineTransitionSelect").value
+    : "cut";
+
+  showToast(`🎬 Đang ghép ${uniqueIndices.length > 0 ? uniqueIndices.length : "tất cả"} phân cảnh bằng FFMPEG (${transition})...`, "info");
+  cineProgressBox.classList.remove("hidden");
+  cineProgressText.innerText = "Đang ghép nối các phân cảnh đã chọn bằng FFMPEG...";
+
+  try {
+    const res = await fetch(`/api/cinematic/${projectId}/stitch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        selectedSceneIndices: uniqueIndices.length > 0 ? uniqueIndices : null,
+        transition,
+      }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    showToast(`✅ Đã ghép thành công video hoàn chỉnh (${data.sceneCount} cảnh)!`, "success");
+    cineProgressText.innerText = `Ghép video hoàn tất! (${data.sceneCount} cảnh)`;
+    cineProgressBar.style.width = "100%";
+    cineProgressPercent.innerText = "100%";
+
+    cineResultContainer.innerHTML = `
+      <div class="video-player-container">
+        <video src="${data.finalVideoUrl}" controls autoplay loop playsinline preload="auto"></video>
+        <div class="video-meta-badge">
+          <span>${data.sceneCount} cảnh ghép FFMPEG (${transition})</span>
+        </div>
+      </div>
+    `;
+
+    btnDownloadCine.href = data.finalVideoUrl;
+    btnDownloadCine.download = data.finalVideoUrl.split("/").pop();
+    cineResultActions.classList.remove("hidden");
+
+    btnCopyCineUrl.onclick = () => {
+      navigator.clipboard.writeText(window.location.origin + data.finalVideoUrl);
+      showToast("Đã sao chép link phim vào bộ nhớ tạm!");
+    };
+  } catch (err) {
+    showToast(`Lỗi khi ghép video: ${err.message}`, "error");
+  }
+};
+
+const btnStitchSelectedTop = document.getElementById("btnStitchSelectedTop");
+const btnStitchSelectedBottom = document.getElementById("btnStitchSelectedBottom");
+if (btnStitchSelectedTop) btnStitchSelectedTop.addEventListener("click", triggerStitchSelectedScenes);
+if (btnStitchSelectedBottom) btnStitchSelectedBottom.addEventListener("click", triggerStitchSelectedScenes);
+
+function pollCinematic(cinematicId) {
+  const timer = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/cinematic/${cinematicId}`);
+      const data = await res.json();
+      if (!data.ok || !data.cinematic) return;
+
+      const cinematic = data.cinematic;
+      cineProgressBar.style.width = `${cinematic.progress}%`;
+      cineProgressPercent.innerText = `${cinematic.progress}%`;
+      cineProgressText.innerText = cinematic.progressText || "Đang xử lý...";
+
+      if (cinematic.scenes) {
+        cinematic.scenes.forEach((sc, idx) => {
+          const card = document.getElementById(`cine_sc_card_${sc.id || idx}`);
+          if (card) {
+            card.className = `cine-scene-card ${sc.status}`;
+            const statusEl = card.querySelector(".cine-card-status");
+            if (statusEl) {
+              statusEl.innerText =
+                sc.status === "completed"
+                  ? `✅ Hoàn tất${sc.duration ? ` (${sc.duration})` : ""}`
+                  : sc.status === "processing"
+                  ? `⏳ ${sc.progressText || "Đang render..."}`
+                  : sc.status === "failed"
+                  ? "❌ Lỗi"
+                  : "Chờ";
+            }
+            if (sc.mediaUrl && !card.querySelector(".cine-card-video")) {
+              const v = document.createElement("video");
+              v.src = sc.mediaUrl;
+              v.controls = true;
+              v.className = "cine-card-video";
+              v.preload = "metadata";
+              const actions = card.querySelector(".cine-card-actions");
+              if (actions) {
+                card.insertBefore(v, actions);
+              } else {
+                card.appendChild(v);
+              }
+            }
+          }
+        });
+      }
+
+      if (cinematic.status === "completed") {
+        clearInterval(timer);
+        btnGenerateCinematic.disabled = false;
+        showToast("🎬 Hoàn tất toàn bộ Phim Điện Ảnh!", "success");
+
+        cineResultContainer.innerHTML = `
+          <div class="video-player-container">
+            <video src="${cinematic.finalVideoUrl}" controls autoplay loop playsinline preload="auto"></video>
+            <div class="video-meta-badge">
+              <span>${cinematic.scenes.length} cảnh nối FFMPEG (Smart Cut)</span>
+              <span>•</span>
+              <span>${cinematic.aspectRatio}</span>
+              <span>•</span>
+              <span>${cinematic.quality}</span>
+            </div>
+          </div>
+        `;
+
+        btnDownloadCine.href = cinematic.finalVideoUrl;
+        btnDownloadCine.download = cinematic.finalVideoUrl.split("/").pop();
+        cineResultActions.classList.remove("hidden");
+
+        btnCopyCineUrl.onclick = () => {
+          navigator.clipboard.writeText(window.location.origin + cinematic.finalVideoUrl);
+          showToast("Đã sao chép link phim vào bộ nhớ tạm!");
+        };
+
+        checkStatus();
+      } else if (cinematic.status === "failed") {
+        clearInterval(timer);
+        btnGenerateCinematic.disabled = false;
+        showToast(`Tạo phim thất bại: ${cinematic.error}`, "error");
+        cineProgressText.innerText = `Lỗi: ${cinematic.error}`;
+      }
+    } catch (_e) {}
+  }, 2000);
+}
+
 // Init
 checkStatus();
 loadAccounts();
 renderStorySceneRows();
+renderCineSceneRows();
 setInterval(checkStatus, 10000);

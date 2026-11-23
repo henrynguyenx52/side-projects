@@ -1,0 +1,12 @@
+# Local environment and downloaded artifacts
+repo/.venv/
+.venv/
+repo/models/
+repo/sample_results/
+repo/results/
+models/
+outputs/
+logs/
+__pycache__/
+*.py[cod]
+.DS_Store

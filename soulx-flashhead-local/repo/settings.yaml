@@ -1,0 +1,19 @@
+# ── SoulX FlashHead User Settings ──
+# Edit values here instead of in Python files.
+
+# Face crop: when enabled, detects the face and crops tightly around it.
+# Disable to use the full uploaded image (centered-cropped to target size).
+use_face_crop: false
+
+# How much context around the detected face to include.
+#  2.0 = tight headshot (2x face width)
+#  3.0 = includes shoulders
+#  4.0 = upper body
+# Only used when use_face_crop is true.
+face_ratio: 4.0
+
+# Audio encoding mode: "stream" (chunk-by-chunk) or "once" (all at once)
+audio_encode_mode: stream
+
+# Random seed for reproducibility (set to -1 for random)
+seed: 9999

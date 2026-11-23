@@ -13,6 +13,7 @@ class Store {
       tasks: [],
       batchRows: [],
       stories: [],
+      cinematics: [],
       settings: {
         headless: false,
         autoDownload: true,
@@ -34,6 +35,7 @@ class Store {
           tasks: parsed.tasks || [],
           batchRows: parsed.batchRows || [],
           stories: parsed.stories || [],
+          cinematics: parsed.cinematics || [],
           settings: { ...this.data.settings, ...(parsed.settings || {}) },
         };
       }
@@ -202,11 +204,12 @@ class Store {
     return (this.data.stories || []).find((s) => s.id === id) || null;
   }
 
-  createStory({ prompt, sceneCount = 3, targetDuration = "30s", aspectRatio = "9:16", quality = "2K", scenes = [] }) {
+  createStory({ prompt, expect = "video", sceneCount = 3, targetDuration = "30s", aspectRatio = "9:16", quality = "2K", scenes = [] }) {
     const id = `story_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
     const story = {
       id,
       prompt: String(prompt || "").trim(),
+      expect: expect === "image" ? "image" : "video",
       sceneCount: Number(sceneCount) || scenes.length || 3,
       targetDuration,
       aspectRatio,
@@ -216,9 +219,13 @@ class Store {
       progressText: "Đang khởi tạo các phân cảnh...",
       scenes: scenes.map((s, idx) => ({
         id: `sc_${id}_${idx + 1}`,
-        index: idx + 1,
+        index: Number(s.index) || idx + 1,
         title: s.title || `Cảnh ${idx + 1}`,
         prompt: s.prompt,
+        duration: s.duration || null,
+        narration: s.narration || "",
+        camera: s.camera || "",
+        continuity: s.continuity || "",
         referenceImages: Array.isArray(s.referenceImages) ? s.referenceImages : [],
         status: "queued", // queued | processing | completed | failed
         progress: 0,
@@ -229,6 +236,7 @@ class Store {
       })),
       finalVideoUrl: "",
       finalVideoPath: "",
+      finalImages: [],
       error: "",
       createdAt: Date.now(),
       completedAt: null,
@@ -262,6 +270,108 @@ class Store {
     const idx = (this.data.stories || []).findIndex((s) => s.id === id);
     if (idx !== -1) {
       this.data.stories.splice(idx, 1);
+      this.save();
+      return true;
+    }
+    return false;
+  }
+
+  // --- Cinematics (Continuous Conversation Pipeline) ---
+  get cinematics() {
+    return this.data.cinematics || [];
+  }
+
+  getCinematic(id) {
+    return (this.data.cinematics || []).find((c) => c.id === id) || null;
+  }
+
+  createCinematic({
+    prompt,
+    styleKey = "hollywood_35mm",
+    customStyle = "",
+    voiceKey = "natural_dialogue",
+    transition = "cut",
+    aspectRatio = "16:9",
+    quality = "2K",
+    sceneDuration = "10s",
+    commonPromptHead = "",
+    commonPromptTail = "",
+    commonPrompt = "",
+    globalReferenceImages = [],
+    scenes = [],
+  }) {
+    const id = `cine_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+    const cinematic = {
+      id,
+      prompt: String(prompt || "").trim(),
+      commonPromptHead: String(commonPromptHead || "").trim(),
+      commonPromptTail: String(commonPromptTail || commonPrompt || "").trim(),
+      commonPrompt: String(commonPromptTail || commonPrompt || "").trim(),
+      styleKey,
+      customStyle,
+      voiceKey,
+      transition,
+      aspectRatio,
+      quality,
+      sceneDuration,
+      globalReferenceImages: Array.isArray(globalReferenceImages) ? globalReferenceImages : [],
+      sceneCount: scenes.length,
+      status: "processing", // processing | completed | failed
+      progress: 0,
+      progressText: "Đang khởi tạo phiên làm việc điện ảnh...",
+      scenes: scenes.map((s, idx) => ({
+        id: `sc_${id}_${idx + 1}`,
+        index: Number(s.index) || idx + 1,
+        title: s.title || `Cảnh ${idx + 1}`,
+        prompt: s.prompt || "",
+        camera: s.camera || "",
+        narration: s.narration || "",
+        duration: s.duration || sceneDuration || "5s",
+        referenceImages: Array.isArray(s.referenceImages) ? s.referenceImages : [],
+        status: "queued", // queued | processing | completed | failed
+        progress: 0,
+        progressText: "Chờ xử lý...",
+        mediaUrl: "",
+        localPath: "",
+        lastFrameUrl: "",
+        lastFramePath: "",
+        error: "",
+      })),
+      finalVideoUrl: "",
+      finalVideoPath: "",
+      error: "",
+      createdAt: Date.now(),
+      completedAt: null,
+    };
+    if (!this.data.cinematics) this.data.cinematics = [];
+    this.data.cinematics.unshift(cinematic);
+    if (this.data.cinematics.length > 50) this.data.cinematics = this.data.cinematics.slice(0, 50);
+    this.save();
+    return cinematic;
+  }
+
+  updateCinematic(id, updates) {
+    const cinematic = this.getCinematic(id);
+    if (cinematic) {
+      Object.assign(cinematic, updates);
+      this.save();
+    }
+    return cinematic;
+  }
+
+  updateCinematicScene(cinematicId, sceneIdx, sceneUpdates) {
+    const cinematic = this.getCinematic(cinematicId);
+    if (cinematic && cinematic.scenes && cinematic.scenes[sceneIdx]) {
+      Object.assign(cinematic.scenes[sceneIdx], sceneUpdates);
+      this.save();
+    }
+    return cinematic;
+  }
+
+  deleteCinematic(id) {
+    const idx = (this.data.cinematics || []).findIndex((c) => c.id === id);
+    if (idx !== -1) {
+      this.data.cinematics.splice(idx, 1);
       this.save();
       return true;
     }

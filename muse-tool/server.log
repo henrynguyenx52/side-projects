@@ -1,0 +1,31 @@
+
+======================================================
+🚀 Muse Playwright Web App is running!
+👉 Web Dashboard: http://localhost:18638
+👉 OpenAI API:    http://localhost:18638/v1
+👉 Chrome Path:   /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+======================================================
+
+[17:41:22] [MuseEngine] Khởi động Chrome cho [1] (headless: false)
+[17:41:29] [MuseEngine] [Cinematic][1] Đã mở 1 cuộc hội thoại duy nhất. Baseline media cũ: 0
+[17:41:29] [MuseEngine] [Cinematic] Đã chuẩn bị 0 ảnh tham chiếu CHUNG cho toàn bộ video.
+[17:41:30] [MuseEngine] [Cinematic] Đã gửi lệnh Cảnh 1/6 vào cuộc hội thoại.
+[17:42:58] [MuseEngine] [Cinematic] ✅ Cảnh 1 đã render hoàn tất trên Muse.ai!
+[17:42:59] [MuseEngine] [Cinematic] 📸 Đã trích xuất khung hình cuối của Cảnh 1 -> cine_cine_1795430481260_a7b020_scene_01_last_frame.png
+[17:43:02] [MuseEngine] [Cinematic] Đã gửi lệnh Cảnh 2/6 vào cuộc hội thoại.
+[17:43:54] [MuseEngine] [Cinematic] ✅ Cảnh 2 đã render hoàn tất trên Muse.ai!
+[17:43:54] [MuseEngine] [Cinematic] 📸 Đã trích xuất khung hình cuối của Cảnh 2 -> cine_cine_1795430481260_a7b020_scene_02_last_frame.png
+[17:43:57] [MuseEngine] [Cinematic] Đã gửi lệnh Cảnh 3/6 vào cuộc hội thoại.
+[17:44:47] [MuseEngine] [Cinematic] ✅ Cảnh 3 đã render hoàn tất trên Muse.ai!
+[17:44:48] [MuseEngine] [Cinematic] 📸 Đã trích xuất khung hình cuối của Cảnh 3 -> cine_cine_1795430481260_a7b020_scene_03_last_frame.png
+[17:44:50] [MuseEngine] [Cinematic] Đã gửi lệnh Cảnh 4/6 vào cuộc hội thoại.
+[17:45:42] [MuseEngine] [Cinematic] ✅ Cảnh 4 đã render hoàn tất trên Muse.ai!
+[17:45:43] [MuseEngine] [Cinematic] 📸 Đã trích xuất khung hình cuối của Cảnh 4 -> cine_cine_1795430481260_a7b020_scene_04_last_frame.png
+[17:45:45] [MuseEngine] [Cinematic] Đã gửi lệnh Cảnh 5/6 vào cuộc hội thoại.
+[17:46:31] [MuseEngine] [Cinematic] ✅ Cảnh 5 đã render hoàn tất trên Muse.ai!
+[17:46:31] [MuseEngine] [Cinematic] 📸 Đã trích xuất khung hình cuối của Cảnh 5 -> cine_cine_1795430481260_a7b020_scene_05_last_frame.png
+[17:46:34] [MuseEngine] [Cinematic] Đã gửi lệnh Cảnh 6/6 vào cuộc hội thoại.
+[17:47:22] [MuseEngine] [Cinematic] ✅ Cảnh 6 đã render hoàn tất trên Muse.ai!
+[17:47:22] [MuseEngine] [Cinematic] 📸 Đã trích xuất khung hình cuối của Cảnh 6 -> cine_cine_1795430481260_a7b020_scene_06_last_frame.png
+[17:47:27] [MuseEngine] [Cinematic] Đã ghép thành công 6 phân cảnh (transition=cut) vào: /Users/hungnguyen/Documents/side-projects/muse-tool/data/media/cinematic_Shot_1_—_Chạy_vào_trú_mưa_Thời_lượn_1795430844173.mp4
+[Cinematic] Hoàn tất phim điện ảnh: /Users/hungnguyen/Documents/side-projects/muse-tool/data/media/cinematic_Shot_1_—_Chạy_vào_trú_mưa_Thời_lượn_1795430844173.mp4
