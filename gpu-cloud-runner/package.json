@@ -1,0 +1,16 @@
+{
+  "name": "gpu-cloud-runner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local web UI for sending image/video references to a cloud GPU over SSH and downloading model outputs.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.2"
+  }
+}

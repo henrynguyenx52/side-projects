@@ -32,4 +32,4 @@ Sau khi RunningHub render xong, backend tải kết quả về máy và chạy A
 
 Jobs và video đã xử lý được lưu bền vững trong thư mục `.data/` của app. Khi refresh trang hoặc restart server, các Jobs hoàn tất và link xem/tải video vẫn còn.
 
-Đây là đường RunningHub WebApp session bằng email/mật khẩu. App không tự fallback sang model khác nếu model đã chọn bị RunningHub từ chối.
+App đăng nhập RunningHub bằng email/mật khẩu, sau đó gửi đúng loại target như client chính: model có `workflowId` gọi `/openapi/v2/run/workflow/{id}`, model có `appId` gọi `/openapi/v2/run/ai-app/{id}`. App không tự fallback sang model khác nếu model đã chọn bị RunningHub từ chối.

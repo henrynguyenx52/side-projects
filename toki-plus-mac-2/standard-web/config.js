@@ -3,6 +3,7 @@
 const STANDARD_WORKFLOW_ID = '2120921661394825218';
 const SOURCE_WORKFLOW_ID = '2110538440155934721';
 const STANDARD_APP_ID = '2113512034955812865';
+const TOKI_21_APP_ID = '2122161294304813058';
 const DEFAULT_MODEL_ID = 'runninghub-wan21-60fps-standard';
 
 const MODEL_PRESETS = Object.freeze({
@@ -30,8 +31,8 @@ const MODEL_PRESETS = Object.freeze({
     id: 'runninghub-standard',
     label: 'Toki 2.1 Standard',
     shortLabel: 'Toki 2.1 Standard',
-    workflowId: SOURCE_WORKFLOW_ID,
-    appId: null,
+    workflowId: null,
+    appId: TOKI_21_APP_ID,
     instanceType: 'default',
     fps: null,
     requiresBackImage: false,
@@ -40,8 +41,8 @@ const MODEL_PRESETS = Object.freeze({
     id: 'runninghub-aiplus',
     label: 'Toki 2.1 AI Plus',
     shortLabel: 'Toki 2.1 AI Plus',
-    workflowId: SOURCE_WORKFLOW_ID,
-    appId: null,
+    workflowId: null,
+    appId: TOKI_21_APP_ID,
     instanceType: 'plus',
     fps: null,
     requiresBackImage: false,
@@ -151,6 +152,7 @@ module.exports = {
   STANDARD_WORKFLOW_ID,
   SOURCE_WORKFLOW_ID,
   STANDARD_APP_ID,
+  TOKI_21_APP_ID,
   DEFAULT_MODEL_ID,
   MODEL_PRESETS,
   getModelPreset,

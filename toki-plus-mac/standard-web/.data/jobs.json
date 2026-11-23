@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "6ca130ca-20ad-4475-bb42-f2ec83de52ac",
+      "state": "completed",
+      "stage": "completed",
+      "instanceType": "plus",
+      "message": "Video đã hoàn tất và được xóa watermark.",
+      "taskId": "2121578917764878337",
+      "result": {
+        "done": true,
+        "status": "SUCCESS",
+        "url": "/api/jobs/6ca130ca-20ad-4475-bb42-f2ec83de52ac/video",
+        "outputs": [
+          "/api/jobs/6ca130ca-20ad-4475-bb42-f2ec83de52ac/video"
+        ],
+        "consumeCoins": 335,
+        "balanceBefore": 741,
+        "balanceAfter": 406,
+        "cleaned": true,
+        "filename": "henry-motion-6ca130ca.mp4"
+      },
+      "error": null,
+      "createdAt": 1794658803735,
+      "updatedAt": 1794659162118,
+      "outputFile": "6ca130ca-20ad-4475-bb42-f2ec83de52ac.mp4"
+    },
+    {
+      "id": "f254bc63-20c6-412e-ae66-22da96589205",
+      "state": "completed",
+      "stage": "completed",
+      "instanceType": "default",
+      "message": "Video đã hoàn tất và được xóa watermark.",
+      "taskId": "2122143621344219137",
+      "result": {
+        "done": true,
+        "status": "SUCCESS",
+        "url": "/api/jobs/f254bc63-20c6-412e-ae66-22da96589205/video",
+        "outputs": [
+          "/api/jobs/f254bc63-20c6-412e-ae66-22da96589205/video"
+        ],
+        "consumeCoins": 252,
+        "balanceBefore": 1000,
+        "balanceAfter": 748,
+        "cleaned": true,
+        "filename": "henry-motion-f254bc63.mp4"
+      },
+      "error": null,
+      "createdAt": 1794793439782,
+      "updatedAt": 1794793799505,
+      "outputFile": "f254bc63-20c6-412e-ae66-22da96589205.mp4"
+    }
+  ]
+}

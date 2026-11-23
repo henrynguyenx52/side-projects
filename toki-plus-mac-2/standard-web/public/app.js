@@ -92,6 +92,17 @@ function setAccountMessage(message, type = '') {
   el.className = `inline-result ${type}`;
 }
 
+function showRunError(message) {
+  progressPanel.classList.remove('hidden');
+  $('#progressMessage').textContent = 'Chưa thể tạo video';
+  $('#progressState').textContent = 'CẦN KIỂM TRA';
+  $('#progressBar').style.width = '3%';
+  $('#errorBox').textContent = message;
+  $('#errorBox').classList.remove('hidden');
+  runButton.disabled = false;
+  runButton.textContent = 'Tạo video';
+}
+
 function showPoints(value) {
   const points = Number(value);
   if (!Number.isFinite(points)) return;
@@ -266,14 +277,23 @@ checkAccount.addEventListener('click', async () => {
 });
 
 runButton.addEventListener('click', async () => {
+  progressPanel.classList.remove('hidden');
+  $('#errorBox').classList.add('hidden');
+  $('#progressMessage').textContent = 'Đang kiểm tra dữ liệu đầu vào…';
+  $('#progressState').textContent = 'CHECKING';
+  $('#progressBar').style.width = '3%';
+
   const image = imageFile.files[0];
   const backImage = backImageFile.files[0];
   const video = videoFile.files[0];
   const model = selectedModel();
-  if (!email.value.trim() || !password.value) return setAccountMessage('Ní cần nhập đủ email và mật khẩu trước.', 'error');
-  if (!image || !video) return alert('Vui lòng chọn đủ ảnh nhân vật và video chuyển động.');
-  if (!model) return alert('Vui lòng chọn model.');
-  if (model.requiresBackImage && !backImage) return alert('Model Front + Back cần thêm ảnh mặt sau.');
+  if (!email.value.trim() || !password.value) {
+    setAccountMessage('Ní cần nhập đủ email và mật khẩu trước.', 'error');
+    return showRunError('Vui lòng nhập đủ email và mật khẩu RunningHub.');
+  }
+  if (!image || !video) return showRunError('Vui lòng chọn đủ ảnh nhân vật và video chuyển động.');
+  if (!model) return showRunError('Cấu hình model chưa tải xong. Vui lòng tải lại trang rồi thử lại.');
+  if (model.requiresBackImage && !backImage) return showRunError('Model Front + Back cần thêm ảnh mặt sau.');
 
   runButton.disabled = true;
   runButton.textContent = 'Đang upload…';

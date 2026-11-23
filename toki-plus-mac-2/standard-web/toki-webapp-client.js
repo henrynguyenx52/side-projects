@@ -30,41 +30,94 @@ function buildExtraInputs(model, backImage) {
   return inputs;
 }
 
-async function createWebAppTaskStrict(webApi, model, image, backImage, video, accessToken) {
-  const targetId = model.appId || model.workflowId;
-  const extraInputs = buildExtraInputs(model, backImage);
-  if (typeof webApi.createWebAppTaskStrict === 'function') {
-    return webApi.createWebAppTaskStrict(
-      targetId,
-      image,
-      video,
-      accessToken,
-      model.instanceType,
-      extraInputs,
-    );
+function buildMotionRequest(model, image, backImage, video) {
+  const hasApp = Boolean(model.appId);
+  const hasWorkflow = Boolean(model.workflowId);
+  if (hasApp === hasWorkflow) {
+    throw new Error(`${model.label} phải có đúng một appId hoặc workflowId.`);
   }
-  const response = await fetch('https://www.runninghub.ai/task/webapp/create', {
+
+  return {
+    endpoint: `/openapi/v2/run/${hasApp ? 'ai-app' : 'workflow'}/${encodeURIComponent(hasApp ? model.appId : model.workflowId)}`,
+    body: {
+      addMetadata: true,
+      nodeInfoList: [
+        { nodeId: '30', fieldName: 'image', fieldValue: image },
+        { nodeId: '33', fieldName: 'video', fieldValue: video },
+        ...buildExtraInputs(model, backImage),
+      ],
+      instanceType: model.instanceType,
+      usePersonalQueue: false,
+    },
+  };
+}
+
+function messageFrom(data, fallback) {
+  return String(data?.message || data?.msg || data?.errorMessage || data?.error || fallback);
+}
+
+async function postOpenApi(fetchImpl, endpoint, body, accessToken) {
+  const response = await fetchImpl(`https://www.runninghub.ai${endpoint}`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${accessToken}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({
-      webappId: targetId,
-      inputs: [
-        { nodeId: '30', fieldName: 'image', fieldValue: image },
-        { nodeId: '33', fieldName: 'video', fieldValue: video },
-        ...extraInputs,
-      ],
-      instanceType: model.instanceType,
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(60_000),
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok || data?.code !== 0 || !data?.data?.taskId) {
-    throw new Error(data?.msg || data?.message || `Không thể chạy model ${model.label} (HTTP ${response.status}).`);
+  if (!response.ok || (typeof data?.code === 'number' && data.code !== 0)) {
+    throw new Error(messageFrom(data, `RunningHub HTTP ${response.status}.`));
   }
-  return String(data.data.taskId);
+  return data?.data ?? data;
+}
+
+async function createMotionTaskStrict(webApi, fetchImpl, model, image, backImage, video, accessToken) {
+  const request = buildMotionRequest(model, image, backImage, video);
+  if (typeof webApi.createMotionTaskStrict === 'function') {
+    return webApi.createMotionTaskStrict(request, accessToken);
+  }
+  const data = await postOpenApi(fetchImpl, request.endpoint, request.body, accessToken);
+  const taskId = data?.taskId || data?.id;
+  if (!taskId) throw new Error(messageFrom(data, `Không thể chạy model ${model.label}: thiếu taskId.`));
+  return String(taskId);
+}
+
+async function queryMotionTaskStrict(webApi, fetchImpl, taskId, accessToken) {
+  if (typeof webApi.queryMotionTaskStrict === 'function') {
+    return webApi.queryMotionTaskStrict(taskId, accessToken);
+  }
+  const data = await postOpenApi(fetchImpl, '/openapi/v2/query', { taskId }, accessToken);
+  const status = String(data?.status || data?.taskStatus || '').toUpperCase();
+  const rawOutputs = Array.isArray(data)
+    ? data
+    : data?.results || data?.outputs || data?.data || [];
+  const outputRecords = (Array.isArray(rawOutputs) ? rawOutputs : []).filter(Boolean);
+  const outputs = outputRecords
+    .map((item) => item?.fileUrl || item?.url)
+    .filter(Boolean);
+
+  if (outputs.length) {
+    const videoRecord = outputRecords.find((item) => String(item?.fileType || '').toLowerCase() === 'mp4')
+      || outputRecords.find((item) => /video|mp4|mov|webm/i.test(`${item?.fileType || ''} ${item?.fileUrl || item?.url || ''}`))
+      || outputRecords[0];
+    return {
+      done: true,
+      status: status || 'SUCCESS',
+      url: videoRecord.fileUrl || videoRecord.url,
+      outputs,
+      consumeCoins: Number(data?.usage?.consumeCoins || 0),
+    };
+  }
+  const hasErrorCode = data?.errorCode != null && String(data.errorCode) !== '0';
+  if (['FAILED', 'ERROR', 'CANCELED', 'CANCELLED'].includes(status) || data?.failed || hasErrorCode) {
+    throw new Error(messageFrom(data, `Task ${taskId} thất bại.`));
+  }
+  if (['SUCCESS', 'COMPLETED'].includes(status)) {
+    throw new Error('Task hoàn tất nhưng không có link video đầu ra.');
+  }
+  return { done: false, status: status || 'RUNNING' };
 }
 
 class TokiWebAppClient {
@@ -75,6 +128,7 @@ class TokiWebAppClient {
     this.credential = directAccount ? '' : String(auth || '').trim();
     this.webApi = options.webApi || defaultWebApi;
     this.cipher = options.cipher || defaultCipher;
+    this.fetch = options.fetch || fetch;
     this.account = options.account || directAccount;
     this.accessToken = null;
     this.balanceBefore = null;
@@ -144,8 +198,9 @@ class TokiWebAppClient {
     const model = getModelPreset(legacyModelId);
     if (!model) throw new Error('Model Motion Toki không hợp lệ.');
     this.balanceBefore = await this.getBalance();
-    return this.withToken((token) => createWebAppTaskStrict(
+    return this.withToken((token) => createMotionTaskStrict(
       this.webApi,
+      this.fetch,
       model,
       image,
       backImage,
@@ -155,10 +210,13 @@ class TokiWebAppClient {
   }
 
   async query(taskId) {
-    const status = await this.withToken((token) => this.webApi.queryWebAppTask(taskId, token));
+    const status = await this.withToken((token) => queryMotionTaskStrict(
+      this.webApi,
+      this.fetch,
+      taskId,
+      token,
+    ));
     if (!status.done) return { done: false, status: status.status || 'RUNNING' };
-    if (status.status === 'FAILED') throw new Error(status.error || 'RunningHub WebApp task thất bại.');
-    const url = await this.withToken((token) => this.webApi.getWebAppOutputUrl(taskId, token));
     const balanceAfter = await this.getBalance().catch(() => null);
     const spent = Number.isFinite(this.balanceBefore) && Number.isFinite(balanceAfter)
       ? Math.max(0, this.balanceBefore - balanceAfter)
@@ -166,9 +224,9 @@ class TokiWebAppClient {
     return {
       done: true,
       status: 'SUCCESS',
-      url,
-      outputs: [url],
-      consumeCoins: spent,
+      url: status.url,
+      outputs: status.outputs,
+      consumeCoins: Number(status.consumeCoins || spent),
       balanceBefore: this.balanceBefore,
       balanceAfter,
     };
@@ -182,4 +240,4 @@ class TokiWebAppClient {
   }
 }
 
-module.exports = { TokiWebAppClient, buildExtraInputs };
+module.exports = { TokiWebAppClient, buildExtraInputs, buildMotionRequest };

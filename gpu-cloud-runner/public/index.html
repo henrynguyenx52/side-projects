@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Upload reference files, run a model on a cloud GPU over SSH, and receive outputs locally." />
+    <title>GPU Cloud Runner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="noise"></div>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="GPU Cloud Runner home">
+        <span class="brand-mark"><i></i><i></i><i></i></span>
+        <span>GPU Cloud Runner</span>
+      </a>
+      <div class="local-badge"><span></span> WARP · Direct SSH</div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">LOCAL CONTROL PLANE / REMOTE COMPUTE</p>
+        <h1>Đẩy reference lên cloud.<br /><em>Kéo kết quả về local.</em></h1>
+        <p class="lede">Native OpenSSH chạy theo system route của WARP. Upload và download bằng SCP trực tiếp, không đi qua proxy hay SSH client viết bằng JavaScript.</p>
+      </section>
+
+      <form id="runner-form" class="workspace">
+        <div class="config-stack">
+          <section class="panel">
+            <div class="panel-heading">
+              <div><span class="step">01</span><h2>Kết nối GPU</h2></div>
+              <button type="button" class="button secondary" id="test-ssh">Test SSH</button>
+            </div>
+            <label class="field command-field">
+              <span>SSH command</span>
+              <input name="sshCommand" placeholder="ssh -p 22 -i ~/.ssh/id_ed25519 root@DIRECT_IP" spellcheck="false" autocomplete="off" required />
+            </label>
+            <p class="field-help">App lấy direct host, port và key từ command. <code>-L</code>/<code>-R</code> được bỏ qua; WARP tự áp dụng qua system route.</p>
+            <div id="ssh-result" class="inline-message hidden"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading"><div><span class="step">02</span><h2>Reference files</h2></div><span class="limit">Tối đa 10 file / loại</span></div>
+            <div class="drop-grid">
+              <label class="dropzone" data-type="image">
+                <input name="images" type="file" accept="image/*" multiple />
+                <span class="drop-icon image-icon"></span>
+                <strong>Ảnh reference</strong>
+                <small>PNG, JPG, WEBP…</small>
+                <div class="file-list"></div>
+              </label>
+              <label class="dropzone" data-type="video">
+                <input name="videos" type="file" accept="video/*" multiple />
+                <span class="drop-icon video-icon"></span>
+                <strong>Video reference</strong>
+                <small>MP4, MOV, WEBM…</small>
+                <div class="file-list"></div>
+              </label>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading"><div><span class="step">03</span><h2>Model command</h2></div></div>
+            <label class="field"><span>Preset</span><select name="preset" id="model-preset"><option value="rvm">Robust Video Matting · MobileNetV3</option><option value="custom">Custom command</option></select></label>
+            <div class="preset-note" id="preset-note"><strong>RVM test flow</strong><span>Xuất preview nền xanh, foreground và alpha matte cho mỗi video.</span></div>
+            <label class="field"><span>Remote workspace</span><input name="remoteBase" value="/workspace/gpu-jobs" required /></label>
+            <label class="field command-field">
+              <span>Command</span>
+              <textarea name="command" rows="5" spellcheck="false" required>if [ -x /venv/main/bin/python ]; then PYTHON=/venv/main/bin/python; else PYTHON=python3; fi; if command -v uv &gt;/dev/null; then uv pip install --python "$PYTHON" av pims tqdm pillow; else "$PYTHON" -m pip install --quiet av pims tqdm pillow; fi &amp;&amp; "$PYTHON" {runner} --inputs {videos} --output-dir {output_dir}</textarea>
+            </label>
+            <div class="tokens" aria-label="Available placeholders">
+              <button type="button" data-token="{runner}">{runner}</button><button type="button" data-token="{input_dir}">{input_dir}</button><button type="button" data-token="{output_dir}">{output_dir}</button><button type="button" data-token="{images}">{images}</button><button type="button" data-token="{videos}">{videos}</button><button type="button" data-token="{prompt}">{prompt}</button>
+            </div>
+            <label class="field prompt-field hidden"><span>Prompt <small>(tuỳ chọn)</small></span><textarea name="prompt" rows="3" placeholder="Mô tả kết quả ní muốn model tạo…"></textarea></label>
+          </section>
+
+          <button class="button primary run-button" type="submit"><span>Run on cloud GPU</span><i></i></button>
+          <p class="privacy-note">App không đọc private key; native OpenSSH tự dùng key file hoặc ssh-agent của máy.</p>
+        </div>
+
+        <aside class="console-panel">
+          <div class="console-head">
+            <div><span class="status-dot idle" id="status-dot"></span><strong id="status-label">Chưa chạy</strong></div>
+            <span class="job-id" id="job-id">NO JOB</span>
+          </div>
+          <div class="progress-track"><span id="progress-bar"></span></div>
+          <div class="console" id="console" aria-live="polite"><p class="empty-console">Log từ cloud GPU sẽ xuất hiện ở đây.</p></div>
+          <div class="outputs" id="outputs">
+            <div class="outputs-head"><strong>Local outputs</strong><span id="output-count">0 files</span></div>
+            <div id="output-list" class="output-list"><p>Chưa có kết quả.</p></div>
+          </div>
+        </aside>
+      </form>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

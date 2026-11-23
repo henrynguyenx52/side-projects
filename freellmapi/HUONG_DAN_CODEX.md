@@ -16,7 +16,7 @@ Tài liệu này tổng hợp toàn bộ hướng dẫn từ A–Z về cách v�
 Mở Terminal và thực hiện các bước sau:
 
 ```bash
-cd /Users/hungnguyen/Documents/side-projects/freellmapi
+cd /Users/nguyenhuuhung/Documents/side-projects/freellmapi
 
 # 1. Cài đặt dependencies (chỉ cần chạy lần đầu)
 npm install
@@ -73,11 +73,12 @@ Tại thanh trên cùng của giao diện [http://localhost:3001](http://localho
 
 Chúng ta sử dụng tính năng **Profile** của Codex. Thiết lập này giữ nguyên lệnh `codex` mặc định và tạo thêm lệnh `codex-free`.
 
-### Bước 1: Cập nhật file cấu hình Codex
-Mở file [config.toml](/Users/hungnguyen/.codex/config.toml) và thêm nội dung sau vào cuối file:
+### Bước 1: Cấu hình Profile cho Codex
+Codex CLI hiện đại yêu cầu mỗi profile là một file riêng (`<name>.config.toml`):
 
+1. File chính [config.toml](/Users/nguyenhuuhung/.codex/config.toml) khai báo provider:
 ```toml
-# --- Cấu hình dự phòng FreeLLMAPI khi hết token ---
+# --- Cấu hình FreeLLMAPI Provider ---
 [model_providers.freellmapi]
 name = "FreeLLMAPI"
 base_url = "http://localhost:3001/v1"
@@ -85,12 +86,22 @@ wire_api = "responses"
 env_key = "FREELLMAPI_API_KEY"
 requires_openai_auth = false
 model_catalog_url = "http://localhost:3001/v1/codex/models"
+```
 
-[profiles.free]
+2. Tạo file profile [free.config.toml](/Users/nguyenhuuhung/.codex/free.config.toml):
+```toml
 model = "auto"
 model_provider = "freellmapi"
 model_context_window = 128000
 model_auto_compact_token_limit = 115200
+
+[model_providers.freellmapi]
+name = "FreeLLMAPI"
+base_url = "http://localhost:3001/v1"
+wire_api = "responses"
+env_key = "FREELLMAPI_API_KEY"
+requires_openai_auth = false
+model_catalog_url = "http://localhost:3001/v1/codex/models"
 ```
 
 ### Bước 2: Thêm biến môi trường và Alias vào Shell
