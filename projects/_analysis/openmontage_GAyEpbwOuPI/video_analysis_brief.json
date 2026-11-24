@@ -1,0 +1,126 @@
+{
+  "version": "1.0",
+  "source": {
+    "type": "local_file",
+    "duration_seconds": 15.11619,
+    "local_path": "../projects/_analysis/GAyEpbwOuPI.mp4",
+    "title": "GAyEpbwOuPI"
+  },
+  "content_analysis": {
+    "summary": "",
+    "topics": [],
+    "target_audience": "general"
+  },
+  "structure_analysis": {
+    "total_scenes": 2,
+    "scenes": [
+      {
+        "scene_index": 0,
+        "start_time": 0.0,
+        "end_time": 5.067,
+        "description": "",
+        "visual_type": "other",
+        "energy_level": "medium",
+        "motion_type": "unknown",
+        "flow_variance": -1
+      },
+      {
+        "scene_index": 1,
+        "start_time": 5.067,
+        "end_time": 15.116,
+        "description": "",
+        "visual_type": "other",
+        "energy_level": "medium",
+        "motion_type": "unknown",
+        "flow_variance": -1
+      }
+    ],
+    "pacing_profile": {
+      "avg_scene_duration_seconds": 7.56,
+      "shortest_scene_seconds": 5.07,
+      "longest_scene_seconds": 10.05,
+      "cuts_per_minute": 7.94,
+      "pacing_style": "steady_educational"
+    }
+  },
+  "keyframes": [
+    {
+      "timestamp": 0.1,
+      "scene_index": 0,
+      "path": "../projects/_analysis/openmontage_GAyEpbwOuPI/keyframes/frame_0000.jpg",
+      "description": ""
+    },
+    {
+      "timestamp": 2.534,
+      "scene_index": 0,
+      "path": "../projects/_analysis/openmontage_GAyEpbwOuPI/keyframes/frame_0001.jpg",
+      "description": ""
+    },
+    {
+      "timestamp": 5.167,
+      "scene_index": 1,
+      "path": "../projects/_analysis/openmontage_GAyEpbwOuPI/keyframes/frame_0002.jpg",
+      "description": ""
+    },
+    {
+      "timestamp": 7.579,
+      "scene_index": 1,
+      "path": "../projects/_analysis/openmontage_GAyEpbwOuPI/keyframes/frame_0003.jpg",
+      "description": ""
+    },
+    {
+      "timestamp": 10.091,
+      "scene_index": 1,
+      "path": "../projects/_analysis/openmontage_GAyEpbwOuPI/keyframes/frame_0004.jpg",
+      "description": ""
+    },
+    {
+      "timestamp": 12.604,
+      "scene_index": 1,
+      "path": "../projects/_analysis/openmontage_GAyEpbwOuPI/keyframes/frame_0005.jpg",
+      "description": ""
+    }
+  ],
+  "style_profile": {
+    "audio_energy_profile": {
+      "recommended_offset": 0.0,
+      "has_energy_data": true
+    },
+    "color_palette": {
+      "primary_colors": [],
+      "accent_colors": [],
+      "overall_mood": ""
+    },
+    "typography_observed": "",
+    "transition_types": [],
+    "music_style": "",
+    "subtitle_style": "",
+    "production_quality": "prosumer",
+    "closest_playbook": "",
+    "playbook_delta": ""
+  },
+  "replication_guidance": {
+    "suggested_pipeline": "animated-explainer",
+    "suggested_playbook": "flat-motion-graphics",
+    "key_elements_to_replicate": [],
+    "elements_requiring_custom_work": [],
+    "estimated_complexity": "simple",
+    "motion_required": false,
+    "creative_differentiation_seeds": []
+  },
+  "_analysis_meta": {
+    "depth": "deep",
+    "steps_completed": [
+      "metadata",
+      "scene_detect",
+      "motion_classification",
+      "keyframes",
+      "audio_energy"
+    ],
+    "steps_failed": [],
+    "keyframe_count": 6,
+    "scene_count": 2,
+    "has_transcript": false,
+    "duration_seconds": 1.0
+  }
+}

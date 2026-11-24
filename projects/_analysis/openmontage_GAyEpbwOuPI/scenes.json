@@ -1,0 +1,16 @@
+{
+  "scenes": [
+    {
+      "index": 0,
+      "start_seconds": 0.0,
+      "end_seconds": 5.067,
+      "duration_seconds": 5.067
+    },
+    {
+      "index": 1,
+      "start_seconds": 5.067,
+      "end_seconds": 15.116,
+      "duration_seconds": 10.05
+    }
+  ]
+}
