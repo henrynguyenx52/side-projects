@@ -1,0 +1,8 @@
+[project]
+name = "ai-watermark-cleaner"
+version = "0.1.0"
+description = "Isolated workspace for testing remove-ai-watermarks on Apple Silicon"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "remove-ai-watermarks[video,diffusion,audio-detect]",
+]
