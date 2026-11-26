@@ -1,0 +1,4 @@
+# Source files for this static app live in dist/
+!dist/
+!dist/**
+.DS_Store

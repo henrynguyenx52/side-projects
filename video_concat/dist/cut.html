@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Combine two video clips while keeping the first video's sound running.">
+  <title>Audio Keeper Cut</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Audio Keeper Cut home">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span>Audio Keeper Cut</span>
+    </a>
+    <nav class="nav-tabs" aria-label="Main Navigation">
+      <a class="nav-tab" href="/">Video Song Song (Blend)</a>
+      <a class="nav-tab active" href="cut.html">Cut Video</a>
+    </nav>
+    <span class="privacy"><span class="privacy-dot"></span>Local processing</span>
+  </header>
+
+  <main class="shell">
+    <section class="intro">
+      <p class="eyebrow">Two clips. One continuous sound.</p>
+      <h1>Switch the picture.<br><em>Keep the moment.</em></h1>
+      <p class="lede">Start with video 1, cut to video 2 whenever you want, and keep video 1’s original audio playing all the way through.</p>
+    </section>
+
+    <section class="workspace" aria-label="Video editor">
+      <div class="controls">
+        <div class="step-heading"><span>01</span><div><h2>Choose your clips</h2><p>Video 1 supplies the sound. Video 2 supplies the new picture.</p></div></div>
+
+        <div class="tiktok-grid">
+          <div class="link-import">
+            <div class="link-label"><span class="clip-tag primary">Video 1 · Sound source</span><small>TikTok</small></div>
+            <div class="link-row compact-link-row">
+              <input id="tiktokUrlA" type="url" placeholder="Paste TikTok link for video 1" autocomplete="off" spellcheck="false">
+              <button class="button fetch-button" id="fetchTikTokA">Fetch video 1</button>
+            </div>
+            <div class="fetch-status" id="fetchStatusA" hidden><span class="spinner" aria-hidden="true"></span><span>Fetching video 1…</span></div>
+          </div>
+          <div class="link-import secondary-import">
+            <div class="link-label"><span class="clip-tag">Video 2 · Picture only</span><small>TikTok</small></div>
+            <div class="link-row compact-link-row">
+              <input id="tiktokUrlB" type="url" placeholder="Paste TikTok link for video 2" autocomplete="off" spellcheck="false">
+              <button class="button fetch-button orange-button" id="fetchTikTokB">Fetch video 2</button>
+            </div>
+            <div class="fetch-status" id="fetchStatusB" hidden><span class="spinner orange-spinner" aria-hidden="true"></span><span>Fetching video 2…</span></div>
+          </div>
+        </div>
+
+        <div class="or"><span>or choose two local files</span></div>
+
+        <div class="uploads">
+          <label class="upload-card" id="cardA">
+            <input id="fileA" type="file" accept="video/*">
+            <span class="clip-tag primary">Video 1 · Sound source</span>
+            <span class="upload-icon" aria-hidden="true">＋</span>
+            <strong id="nameA">Drop or choose video 1</strong>
+            <small id="metaA">MP4, MOV, or WebM</small>
+          </label>
+          <label class="upload-card" id="cardB">
+            <input id="fileB" type="file" accept="video/*">
+            <span class="clip-tag">Video 2 · Picture only</span>
+            <span class="upload-icon" aria-hidden="true">＋</span>
+            <strong id="nameB">Drop or choose video 2</strong>
+            <small id="metaB">Its audio will be removed</small>
+          </label>
+        </div>
+
+        <div class="settings disabled" id="settings">
+          <div class="step-heading compact"><span>02</span><div><h2>Place the cut</h2><p>Choose when the picture switches to video 2.</p></div></div>
+          <div class="cut-readout"><strong id="cutTime">0:00.0</strong><span id="durationText">of 0:00.0</span></div>
+          <input id="cutRange" class="range" type="range" min="0" max="100" value="70" aria-label="Cut point">
+          <div class="timeline" aria-hidden="true"><div class="segment a" id="segmentA">VIDEO 1</div><div class="segment b" id="segmentB">VIDEO 2</div></div>
+
+          <div class="option-grid">
+            <label><span>Video 2 starts at</span><div class="input-with-unit"><input id="offsetInput" type="number" min="0" step="0.1" value="0"><b>sec</b></div></label>
+            <label><span>Fit</span><select id="fitSelect"><option value="cover">Fill frame</option><option value="contain">Fit inside</option></select></label>
+          </div>
+          <div class="video2-start-tools">
+            <div class="tool-heading"><span>Choose video 2 starting frame</span><output id="offsetPreviewTime">0:00.0</output></div>
+            <input id="offsetRange" class="range orange-range" type="range" min="0" max="0" step="0.1" value="0" aria-label="Video 2 starting point">
+            <button class="button secondary mini-preview" id="previewVideo2Button" disabled><span id="previewVideo2Icon">▶</span> Preview video 2 from here</button>
+          </div>
+          <p class="hint" id="lengthHint">The export length follows video 1, so its audio stays continuous.</p>
+        </div>
+
+        <div class="preview-scrubber disabled" id="previewScrubber">
+          <div class="tool-heading"><span>Combined preview position</span><output id="previewPosition">0:00.0</output></div>
+          <input id="previewRange" class="range" type="range" min="0" max="100" step="0.1" value="0" aria-label="Combined preview position">
+        </div>
+
+        <div class="actions">
+          <button class="button secondary" id="previewButton" disabled><span id="previewIcon">▶</span> Play combined preview</button>
+          <button class="button primary-button" id="exportButton" disabled>Export video</button>
+        </div>
+        <div class="progress-wrap" id="progressWrap" hidden>
+          <div class="progress-row"><span id="progressLabel">Rendering on your device…</span><strong id="progressValue">0%</strong></div>
+          <progress id="progress" max="100" value="0"></progress>
+          <button class="cancel" id="cancelButton">Cancel export</button>
+        </div>
+        <div class="result" id="result" hidden>
+          <div><strong>Your video is ready</strong><span id="resultMeta">Rendered locally</span></div>
+          <a class="button download" id="downloadLink" download="audio-keeper-cut.webm">Download video</a>
+        </div>
+        <p class="error" id="error" role="alert" hidden></p>
+      </div>
+
+      <aside class="stage-panel">
+        <div class="stage-label"><span>LIVE PREVIEW</span><span id="activeClip">Waiting for clips</span></div>
+        <div class="phone-stage" id="phoneStage">
+          <canvas id="canvas" width="720" height="1280"></canvas>
+          <div class="timecode" id="timecode">00:00.0</div>
+        </div>
+        <div class="sound-path"><span class="sound-icon" aria-hidden="true">♪</span><div><strong>Audio path</strong><small>Video 1 → entire export</small></div><div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      </aside>
+    </section>
+
+    <section class="how-it-works">
+      <p class="eyebrow">The workflow</p>
+      <h2>One clean cut, done in your browser.</h2>
+      <div class="flow">
+        <div><span>1</span><strong>Load</strong><p>Add the original clip and the replacement picture.</p></div>
+        <div><span>2</span><strong>Cut</strong><p>Move the slider to the moment video 2 should appear.</p></div>
+        <div><span>3</span><strong>Export</strong><p>The picture changes; video 1’s sound continues untouched.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer><span>Audio Keeper Cut</span><span>Local app · Public TikTok links supported</span></footer>
+
+  <video id="videoA" playsinline preload="metadata"></video>
+  <video id="videoB" playsinline preload="metadata" muted></video>
+  <script src="app.js"></script>
+</body>
+</html>

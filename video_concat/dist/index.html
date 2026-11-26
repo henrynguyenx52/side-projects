@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description"
+    content="Ghép 2 video chạy song song với đường cắt mờ chuyển sắc feather gradient và giữ âm thanh video 1.">
+  <title>Video Song Song (Dual Blend) · Audio Keeper Cut</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Audio Keeper Cut home">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span>Audio Keeper Cut</span>
+    </a>
+    <nav class="nav-tabs" aria-label="Main Navigation">
+      <a class="nav-tab active" href="/">Video Song Song (Blend)</a>
+      <a class="nav-tab" href="cut.html">Cut Video</a>
+    </nav>
+    <span class="privacy"><span class="privacy-dot"></span>Xử lý trực tiếp trên máy</span>
+  </header>
+
+  <main class="shell">
+    <section class="intro">
+      <p class="eyebrow">Hiệu ứng Video Song Song · Gradient Blend</p>
+      <h1>2 Video Song Song.<br><em>Hòa quyện không gian.</em></h1>
+      <p class="lede">Ghép 2 video chạy đồng thời với đường nối mờ mềm mại (Feather Gradient) ở giữa, tạo cảm giác 2
+        người đang bước đi trong cùng một khung cảnh. Toàn bộ âm thanh được giữ trọn vẹn từ Video 1.</p>
+    </section>
+
+    <section class="workspace" aria-label="Bộ biên tập video song song">
+      <div class="controls">
+        <div class="step-heading">
+          <span>01</span>
+          <div>
+            <h2>Chọn 2 Video</h2>
+            <p>Video 1 ở bên trái & cung cấp âm thanh. Video 2 ở bên phải (tắt tiếng).</p>
+          </div>
+        </div>
+
+        <div class="tiktok-grid">
+          <div class="link-import">
+            <div class="link-label">
+              <span class="clip-tag primary">Video 1 · Trái + Âm thanh</span>
+              <small>TikTok Link</small>
+            </div>
+            <div class="link-row compact-link-row">
+              <input id="tiktokUrlA" type="url" placeholder="Dán link TikTok cho Video 1" autocomplete="off"
+                spellcheck="false">
+              <button class="button fetch-button" id="fetchTikTokA">Tải Video 1</button>
+            </div>
+            <div class="fetch-status" id="fetchStatusA" hidden>
+              <span class="spinner" aria-hidden="true"></span><span>Đang tải Video 1…</span>
+            </div>
+          </div>
+          <div class="link-import secondary-import">
+            <div class="link-label">
+              <span class="clip-tag">Video 2 · Phải (Hình ảnh)</span>
+              <small>TikTok Link</small>
+            </div>
+            <div class="link-row compact-link-row">
+              <input id="tiktokUrlB" type="url" placeholder="Dán link TikTok cho Video 2" autocomplete="off"
+                spellcheck="false">
+              <button class="button fetch-button orange-button" id="fetchTikTokB">Tải Video 2</button>
+            </div>
+            <div class="fetch-status" id="fetchStatusB" hidden>
+              <span class="spinner orange-spinner" aria-hidden="true"></span><span>Đang tải Video 2…</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="or"><span>hoặc chọn 2 file từ máy tính</span></div>
+
+        <div class="uploads">
+          <label class="upload-card" id="cardA">
+            <input id="fileA" type="file" accept="video/*">
+            <span class="clip-tag primary">Video 1 · Trái + Âm thanh</span>
+            <span class="upload-icon" aria-hidden="true">＋</span>
+            <strong id="nameA">Kéo thả Video 1 vào đây</strong>
+            <small id="metaA">MP4, MOV, hoặc WebM</small>
+          </label>
+          <label class="upload-card" id="cardB">
+            <input id="fileB" type="file" accept="video/*">
+            <span class="clip-tag">Video 2 · Phải (Hình ảnh)</span>
+            <span class="upload-icon" aria-hidden="true">＋</span>
+            <strong id="nameB">Kéo thả Video 2 vào đây</strong>
+            <small id="metaB">Âm thanh sẽ được tắt</small>
+          </label>
+        </div>
+
+        <!-- Cấu hình hiệu ứng hòa trộn -->
+        <div class="settings disabled" id="settings">
+          <div class="step-heading compact">
+            <span>02</span>
+            <div>
+              <h2>Hiệu ứng hòa trộn & Căn chỉnh</h2>
+              <p>Tinh chỉnh đường nối mờ mềm và vị trí nhân vật để tạo bố cục hoàn hảo.</p>
+            </div>
+          </div>
+
+          <div class="blend-controls-grid">
+            <div class="blend-panel-card">
+              <h3>Đường ranh giới <small id="splitReadout">50%</small></h3>
+              <div class="slider-group">
+                <div class="slider-label"><span>Vị trí chia</span><output id="splitVal">50%</output></div>
+                <input id="splitRange" class="range" type="range" min="20" max="80" value="50">
+              </div>
+              <div class="slider-group">
+                <div class="slider-label"><span>Độ mờ viền (Feather)</span><output id="featherVal">140 px</output></div>
+                <input id="featherRange" class="range orange-range" type="range" min="0" max="300" step="10"
+                  value="140">
+              </div>
+              <div class="slider-group">
+                <div class="slider-label"><span>Khớp khung hình</span></div>
+                <select id="fitSelect"
+                  style="width:100%;height:38px;border:1px solid var(--line);border-radius:8px;padding:0 8px;">
+                  <option value="contain" selected>Contain (Giữ trọn tỉ lệ gốc)</option>
+                  <option value="cover">Cover (Lấp đầy khung dọc 9:16)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="blend-panel-card">
+              <h3>Căn vị trí nhân vật (Pan)</h3>
+              <div class="slider-group">
+                <div class="slider-label"><span>Dịch ngang Video 1 (Trái)</span><output id="panAVal">-45%</output></div>
+                <input id="panARange" class="range" type="range" min="-60" max="60" value="-45">
+              </div>
+              <div class="slider-group">
+                <div class="slider-label"><span>Dịch ngang Video 2 (Phải)</span><output id="panBVal">+45%</output></div>
+                <input id="panBRange" class="range orange-range" type="range" min="-60" max="60" value="45">
+              </div>
+            </div>
+          </div>
+
+          <!-- Công cụ chọn thời điểm bắt đầu của Video 2 -->
+          <div class="video2-start-tools">
+            <div class="tool-heading">
+              <span>Video 2 bắt đầu từ giây:</span>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="input-with-unit" style="width:115px;">
+                  <input id="offsetInput" type="number" min="0" step="0.1" value="0"
+                    style="height:36px;padding:0 34px 0 10px;font-weight:700;">
+                  <b style="top:9px;">giây</b>
+                </div>
+                <output id="offsetPreviewTime" style="font-size:0.85rem;font-weight:700;">0:00.0</output>
+              </div>
+            </div>
+            <input id="offsetRange" class="range orange-range" type="range" min="0" max="0" step="0.1" value="0"
+              aria-label="Thời điểm bắt đầu của Video 2">
+            <button class="button secondary mini-preview" id="previewVideo2Button" disabled type="button">
+              <span id="previewVideo2Icon">▶</span> Xem thử riêng Video 2 từ giây này
+            </button>
+          </div>
+
+          <p class="hint">Thời lượng video xuất ra sẽ tuân theo Video 1 để bảo toàn âm thanh không bị gián đoạn.</p>
+        </div>
+
+        <!-- Tua xem trước -->
+        <div class="preview-scrubber disabled" id="previewScrubber">
+          <div class="tool-heading">
+            <span>Vị trí xem trước (Preview)</span>
+            <output id="previewPosition">0:00.0</output>
+          </div>
+          <input id="previewRange" class="range" type="range" min="0" max="100" step="0.1" value="0"
+            aria-label="Preview position">
+        </div>
+
+        <div class="actions">
+          <button class="button secondary" id="previewButton" disabled>
+            <span id="previewIcon">▶</span> Xem thử kết hợp
+          </button>
+          <button class="button primary-button" id="exportButton" disabled>
+            Xuất video song song
+          </button>
+        </div>
+
+        <div class="progress-wrap" id="progressWrap" hidden>
+          <div class="progress-row">
+            <span id="progressLabel">Đang render video trên trình duyệt…</span>
+            <strong id="progressValue">0%</strong>
+          </div>
+          <progress id="progress" max="100" value="0"></progress>
+          <button class="cancel" id="cancelButton">Hủy xuất video</button>
+        </div>
+
+        <div class="result" id="result" hidden>
+          <div>
+            <strong>Video đã tạo thành công!</strong>
+            <span id="resultMeta">Đã lưu cục bộ</span>
+          </div>
+          <a class="button download" id="downloadLink" download="dual-video-blend.webm">Tải video về</a>
+        </div>
+
+        <div class="copy-ffmpeg-wrap">
+          <button class="btn-ffmpeg" id="copyFfmpegBtn"
+            title="Sao chép lệnh FFmpeg để render chất lượng cao bằng Terminal">
+            📋 Sao chép lệnh FFmpeg
+          </button>
+        </div>
+
+        <p class="error" id="error" role="alert" hidden></p>
+      </div>
+
+      <!-- Khung xem trước trực tiếp -->
+      <aside class="stage-panel">
+        <div class="stage-label">
+          <span>XEM TRỰC TIẾP (LIVE PREVIEW)</span>
+          <span id="activeClip">Chờ tải 2 video</span>
+        </div>
+        <div class="phone-stage" id="phoneStage">
+          <canvas id="canvas" width="720" height="1280"></canvas>
+          <div class="timecode" id="timecode">00:00.0</div>
+        </div>
+        <div class="sound-path">
+          <span class="sound-icon" aria-hidden="true">♪</span>
+          <div>
+            <strong>Đường truyền âm thanh</strong>
+            <small>Video 1 (Trái) ➔ Toàn bộ video</small>
+          </div>
+          <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="how-it-works">
+      <p class="eyebrow">Quy trình xử lý</p>
+      <h2>Ghép đôi hoàn hảo, hòa trộn liền mạch.</h2>
+      <div class="flow">
+        <div>
+          <span>1</span>
+          <strong>Tải 2 Video</strong>
+          <p>Dán link TikTok hoặc kéo thả 2 video chân dung từ máy tính.</p>
+        </div>
+        <div>
+          <span>2</span>
+          <strong>Chỉnh Blend & Pan</strong>
+          <p>Kéo dải làm mờ ranh giới và dịch góc camera để chủ thể đứng cân đối.</p>
+        </div>
+        <div>
+          <span>3</span>
+          <strong>Xuất Video</strong>
+          <p>Render trực tiếp trên máy với âm thanh Video 1 giữ nguyên 100%.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Audio Keeper Cut · Dual Video Blend</span>
+    <span>Xử lý cục bộ an toàn · Hỗ trợ link TikTok công khai</span>
+  </footer>
+
+  <video id="videoA" playsinline preload="metadata"></video>
+  <video id="videoB" playsinline preload="metadata" muted></video>
+  <script src="blend.js"></script>
+</body>
+
+</html>
