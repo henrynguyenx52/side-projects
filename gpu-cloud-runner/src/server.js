@@ -13,6 +13,16 @@ const rootDir = path.resolve(__dirname, '..');
 const outputRoot = path.join(rootDir, 'outputs');
 const tempRoot = path.join(rootDir, '.tmp');
 const rvmRunnerPath = path.join(rootDir, 'remote', 'rvm_runner.py');
+const scail2InstallerPath = path.join(rootDir, 'remote', 'scail2_installer.py');
+const scail2PipelinePath = path.join(rootDir, 'remote', 'scail2_pipeline.py');
+const scail2WorkflowFilename = '22_v4.6_full_15s_fast_low_memory.json';
+const scail2WorkflowPath = path.resolve(rootDir, '..', scail2WorkflowFilename);
+const scail2ExtendedWorkflowFilename = '22_v4.6_full_20s_fast_low_memory.json';
+const scail2FullWorkflowFilename = '22_v4.6_full_15s_fast.json';
+const scail2FullWorkflowPath = path.resolve(rootDir, '..', scail2FullWorkflowFilename);
+const scail2FullPipelinePath = path.join(rootDir, 'remote', 'scail2_full_pipeline.py');
+const scail2RunPresets = ['scail2_run', 'scail2_run_20s', 'scail2_full'];
+const scail2InstallPresets = ['scail2_install', 'scail2_full_install'];
 await fsp.mkdir(outputRoot, { recursive: true });
 await fsp.mkdir(tempRoot, { recursive: true });
 
@@ -174,11 +184,15 @@ app.post('/api/jobs', upload.fields([{ name: 'images', maxCount: 10 }, { name: '
   try {
     const ssh = sshConfigFromBody(req.body);
     const remoteBase = validateRemoteBase(req.body.remoteBase || `/home/${ssh.username}/gpu-jobs`);
-    const preset = req.body.preset === 'rvm' ? 'rvm' : 'custom';
+    const requestedPreset = req.body.preset === 'scail2' ? 'scail2_install' : req.body.preset;
+    const preset = ['rvm', ...scail2InstallPresets, ...scail2RunPresets].includes(requestedPreset) ? requestedPreset : 'custom';
     const commandTemplate = req.body.command?.trim();
     if (!commandTemplate) throw new Error('Cần nhập command chạy model');
-    if (!uploaded.length) throw new Error('Cần chọn ít nhất một ảnh hoặc video reference');
+    if (!uploaded.length && !scail2InstallPresets.includes(preset)) throw new Error('Cần chọn ít nhất một ảnh hoặc video reference');
+    if (uploaded.length && preset === 'scail2_full_install') throw new Error('Preset chỉ cài FP16 không nhận ảnh hoặc video');
     if (preset === 'rvm' && !(req.files?.videos || []).length) throw new Error('Preset RVM cần ít nhất một video reference');
+    if (scail2RunPresets.includes(preset) && (req.files?.images || []).length !== 1) throw new Error('Run SCAIL2 cần đúng 1 ảnh reference');
+    if (scail2RunPresets.includes(preset) && (req.files?.videos || []).length !== 1) throw new Error('Run SCAIL2 cần đúng 1 video driving');
 
     const id = `${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`;
     const job = {
@@ -209,7 +223,12 @@ app.post('/api/jobs', upload.fields([{ name: 'images', maxCount: 10 }, { name: '
 });
 
 async function runJob(job) {
+  const startedAt = performance.now();
+  const isScail2 = [...scail2InstallPresets, ...scail2RunPresets].includes(job.preset);
   try {
+    const scail2Full = ['scail2_full', 'scail2_full_install'].includes(job.preset);
+    const lowWorkflowFilename = job.preset === 'scail2_run_20s' ? scail2ExtendedWorkflowFilename : scail2WorkflowFilename;
+    const lowWorkflowPath = path.resolve(rootDir, '..', lowWorkflowFilename);
     setStatus(job, 'connecting');
     log(job, `Native OpenSSH direct ${job.ssh.username}@${job.ssh.host}:${job.ssh.port} · WARP dùng system route`);
     let connectError = '';
@@ -228,6 +247,12 @@ async function runJob(job) {
         (chunk) => chunk.split('\n').filter(Boolean).forEach((line) => log(job, line, 'stderr')),
       );
       if (check.code !== 0) throw new Error('RVM preflight thất bại: cloud cần Python 3, PyTorch, Torchvision và CUDA hoạt động');
+    } else if (isScail2) {
+      setStatus(job, 'preparing');
+      log(job, 'Kiểm tra công cụ cài SCAIL2/ComfyUI trên GPU');
+      const check = await execRemote(job.ssh, 'command -v python3 && command -v git && command -v curl');
+      if (check.code !== 0) throw new Error('SCAIL2 preflight thất bại: cloud cần python3, git và curl');
+      await fsp.access(scail2Full ? scail2FullWorkflowPath : lowWorkflowPath);
     }
 
     const inputDir = `${job.remoteJobDir}/input`;
@@ -238,12 +263,35 @@ async function runJob(job) {
     const images = [];
     const videos = [];
     let runner = '';
+    let workflow = '';
+    const uploadStartedAt = performance.now();
     setStatus(job, 'uploading');
 
     if (job.preset === 'rvm') {
       runner = `${job.remoteJobDir}/rvm_runner.py`;
       log(job, 'Upload RVM worker bằng native SCP');
       await uploadFile(job.ssh, rvmRunnerPath, runner);
+    } else if (job.preset === 'scail2_install') {
+      runner = `${job.remoteJobDir}/scail2_installer.py`;
+      workflow = `${job.remoteJobDir}/${scail2WorkflowFilename}`;
+      log(job, 'Upload bộ cài và workflow SCAIL2 v4.6 bằng native SCP');
+      await uploadFile(job.ssh, scail2InstallerPath, runner);
+      await uploadFile(job.ssh, scail2WorkflowPath, workflow);
+    } else if (scail2RunPresets.includes(job.preset) && !scail2Full) {
+      runner = `${job.remoteJobDir}/scail2_pipeline.py`;
+      workflow = `${job.remoteJobDir}/${lowWorkflowFilename}`;
+      log(job, 'Upload pipeline, installer và workflow SCAIL2 v4.6 bằng native SCP');
+      await uploadFile(job.ssh, scail2PipelinePath, runner);
+      await uploadFile(job.ssh, scail2InstallerPath, `${job.remoteJobDir}/scail2_installer.py`);
+      await uploadFile(job.ssh, lowWorkflowPath, workflow);
+    } else if (scail2Full) {
+      runner = `${job.remoteJobDir}/scail2_full_pipeline.py`;
+      workflow = `${job.remoteJobDir}/${scail2FullWorkflowFilename}`;
+      log(job, 'Upload workflow SCAIL2 FP16 15 giây cho máy khỏe');
+      await uploadFile(job.ssh, scail2FullPipelinePath, runner);
+      await uploadFile(job.ssh, scail2PipelinePath, `${job.remoteJobDir}/scail2_pipeline.py`);
+      await uploadFile(job.ssh, scail2InstallerPath, `${job.remoteJobDir}/scail2_installer.py`);
+      await uploadFile(job.ssh, scail2FullWorkflowPath, workflow);
     }
 
     for (let index = 0; index < job.files.length; index += 1) {
@@ -257,7 +305,8 @@ async function runJob(job) {
       (job.imageTempNames.has(file.filename) ? images : videos).push(remotePath);
     }
 
-    const command = expandCommand(job.commandTemplate, { inputDir, outputDir, images, videos, prompt: job.prompt, runner });
+    const command = expandCommand(job.commandTemplate, { inputDir, outputDir, images, videos, prompt: job.prompt, runner, workflow });
+    const remoteStartedAt = performance.now();
     setStatus(job, 'running');
     log(job, `Chạy model trong ${job.remoteJobDir}`);
     const wrapped = `cd ${shellQuote(job.remoteJobDir)} && bash -lc ${shellQuote(command)}`;
@@ -268,12 +317,30 @@ async function runJob(job) {
       (chunk) => chunk.split('\n').filter(Boolean).forEach((line) => log(job, line, 'stderr')),
     );
     if (result.code !== 0) throw new Error(`Model command kết thúc với exit code ${result.code}${result.signal ? ` (${result.signal})` : ''}`);
+    const remoteFinishedAt = performance.now();
 
     setStatus(job, 'downloading');
     const localDir = path.join(outputRoot, job.id);
     log(job, 'Native SCP download toàn bộ output qua direct SSH/WARP');
     const transfer = await downloadDirectory(job.ssh, outputDir, localDir);
     job.outputs = transfer.outputs;
+    if (isScail2) {
+      const timings = {
+        connect_and_preflight: (uploadStartedAt - startedAt) / 1000,
+        upload: (remoteStartedAt - uploadStartedAt) / 1000,
+        remote_command: (remoteFinishedAt - remoteStartedAt) / 1000,
+        download_to_local: transfer.seconds,
+        total: (performance.now() - startedAt) / 1000,
+      };
+      try {
+        const name = 'job-timings.json';
+        const report = JSON.stringify({ timings_seconds: timings, downloaded_bytes: transfer.bytes }, null, 2) + '\n';
+        await fsp.writeFile(path.join(localDir, name), report, { flag: 'wx' });
+        job.outputs.push({ name, size: Buffer.byteLength(report) });
+      } catch (error) {
+        log(job, `Không ghi được báo cáo thời gian: ${error.message}`, 'stderr');
+      }
+    }
     const megabytes = transfer.bytes / 1024 / 1024;
     const speed = megabytes / transfer.seconds;
     log(job, `Đã tải ${megabytes.toFixed(1)} MB trong ${transfer.seconds.toFixed(1)}s · ${speed.toFixed(1)} MB/s`);
@@ -282,6 +349,16 @@ async function runJob(job) {
     log(job, `Hoàn tất: ${job.outputs.length} file output`);
   } catch (error) {
     log(job, error.message, 'stderr');
+    if (scail2RunPresets.includes(job.preset) && job.ssh) {
+      try {
+        const localDir = path.join(outputRoot, job.id);
+        const transfer = await downloadDirectory(job.ssh, `${job.remoteJobDir}/output`, localDir);
+        job.outputs = transfer.outputs;
+        if (job.outputs.length) log(job, `Đã tải ${job.outputs.length} file chẩn đoán từ job lỗi`, 'stderr');
+      } catch (downloadError) {
+        log(job, `Không tải được file chẩn đoán: ${downloadError.message}`, 'stderr');
+      }
+    }
     setStatus(job, 'failed', { error: error.message });
   } finally {
     await Promise.all(job.files.map((file) => fsp.rm(file.path, { force: true })));

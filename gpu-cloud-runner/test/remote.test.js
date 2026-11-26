@@ -11,10 +11,10 @@ test('safeName strips path traversal and unsafe characters', () => {
 });
 
 test('expandCommand expands supported placeholders only', () => {
-  const result = expandCommand('run {runner} --in {input_dir} --images {images} --x {unknown}', {
-    inputDir: '/tmp/in', outputDir: '/tmp/out', images: ['/tmp/in/a.png'], videos: [], prompt: '', runner: '/tmp/run.py',
+  const result = expandCommand('run {runner} --workflow {workflow} --in {input_dir} --images {images} --x {unknown}', {
+    inputDir: '/tmp/in', outputDir: '/tmp/out', images: ['/tmp/in/a.png'], videos: [], prompt: '', runner: '/tmp/run.py', workflow: '/tmp/flow.json',
   });
-  assert.equal(result, "run '/tmp/run.py' --in '/tmp/in' --images '/tmp/in/a.png' --x {unknown}");
+  assert.equal(result, "run '/tmp/run.py' --workflow '/tmp/flow.json' --in '/tmp/in' --images '/tmp/in/a.png' --x {unknown}");
 });
 
 test('remote base and port validation', () => {

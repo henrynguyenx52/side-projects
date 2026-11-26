@@ -14,8 +14,13 @@ let eventSource;
 const seenLogs = new Set();
 const presetCommands = {
   rvm: 'if [ -x /venv/main/bin/python ]; then PYTHON=/venv/main/bin/python; else PYTHON=python3; fi; if command -v uv >/dev/null; then uv pip install --python "$PYTHON" av pims tqdm pillow; else "$PYTHON" -m pip install --quiet av pims tqdm pillow; fi && "$PYTHON" {runner} --inputs {videos} --output-dir {output_dir}',
+  scail2_install: 'if [ -x /venv/main/bin/python ]; then PYTHON=/venv/main/bin/python; else PYTHON=python3; fi; "$PYTHON" {runner} --comfyui /workspace/ComfyUI --workflow {workflow} --output-dir {output_dir}',
+  scail2_run: 'if [ -x /venv/main/bin/python ]; then PYTHON=/venv/main/bin/python; else PYTHON=python3; fi; "$PYTHON" {runner} --comfyui /workspace/ComfyUI --workflow {workflow} --image {images} --video {videos} --output-dir {output_dir}',
   custom: 'python /opt/model/run.py --images {images} --videos {videos} --prompt {prompt} --output {output_dir}',
 };
+presetCommands.scail2_full = presetCommands.scail2_run;
+presetCommands.scail2_run_20s = presetCommands.scail2_run;
+presetCommands.scail2_full_install = presetCommands.scail2_install + ' --install-only';
 
 const statusMeta = {
   queued: ['Đang xếp hàng', 5], connecting: ['Đang kết nối', 12], preparing: ['Kiểm tra GPU', 20], uploading: ['Đang upload', 30],
@@ -24,9 +29,20 @@ const statusMeta = {
 
 modelPreset.addEventListener('change', () => {
   form.elements.command.value = presetCommands[modelPreset.value];
-  document.querySelector('.prompt-field').classList.toggle('hidden', modelPreset.value === 'rvm');
+  document.querySelector('.prompt-field').classList.toggle('hidden', modelPreset.value !== 'custom');
   const note = document.querySelector('#preset-note');
-  note.classList.toggle('hidden', modelPreset.value !== 'rvm');
+  note.classList.toggle('hidden', modelPreset.value === 'custom');
+  const notes = {
+    scail2_run: ['SCAIL2 v4.6 · tối đa 15 giây', 'Chọn đúng 1 ảnh và 1 video. App tự giới hạn 450 frame, chạy workflow low-memory và tải MP4 về local.'],
+    scail2_run_20s: ['SCAIL2 Low Memory · 20 giây', 'Chọn đúng 1 ảnh và 1 video. Render FP8 với giới hạn 704 px, rồi upscale MP4 lên 1080×1920.'],
+    scail2_full: ['SCAIL2 v4.6 · máy khỏe', 'Chọn đúng 1 ảnh và 1 video. Chạy FP16, xuất 1080×1920 trong ComfyUI và tự tải MP4 về máy.'],
+    scail2_full_install: ['SCAIL2 Fast 15s · chỉ cài FP16', 'Cài ComfyUI, custom nodes, SageAttention và model FP16. Không cần ảnh hoặc video.'],
+    scail2_install: ['SCAIL2 v4.6 installer', 'Chỉ cài ComfyUI, custom nodes, SageAttention và toàn bộ model; không cần chọn input.'],
+    rvm: ['RVM test flow', 'Xuất preview nền xanh, foreground và alpha matte cho mỗi video.'],
+  };
+  const [title, description] = notes[modelPreset.value] || ['', ''];
+  note.querySelector('strong').textContent = title;
+  note.querySelector('span').textContent = description;
 });
 
 for (const input of form.querySelectorAll('.dropzone input')) {
@@ -75,14 +91,22 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const images = form.elements.images.files.length;
   const videos = form.elements.videos.files.length;
-  if (!images && !videos) return showFormError('Chọn ít nhất một ảnh hoặc video reference.');
+  const installOnly = ['scail2_install', 'scail2_full_install'].includes(modelPreset.value);
+  if (!images && !videos && !installOnly) return showFormError('Chọn ít nhất một ảnh hoặc video reference.');
   if (modelPreset.value === 'rvm' && !videos) return showFormError('RVM cần ít nhất một video reference.');
+  const scail2Run = ['scail2_run', 'scail2_run_20s', 'scail2_full'].includes(modelPreset.value);
+  if (scail2Run && images !== 1) return showFormError('Run SCAIL2 cần đúng 1 ảnh reference.');
+  if (scail2Run && videos !== 1) return showFormError('Run SCAIL2 cần đúng 1 video driving.');
 
   runButton.disabled = true;
   runButton.querySelector('span').textContent = 'Đang tạo job…';
   resetConsole();
   try {
     const data = new FormData(form);
+    if (modelPreset.value === 'scail2_full_install') {
+      data.delete('images');
+      data.delete('videos');
+    }
     const response = await fetch('/api/jobs', { method: 'POST', body: data });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error);

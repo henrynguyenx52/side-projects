@@ -37,6 +37,9 @@ muse-tool/data/
 # JS
 node_modules/
 
+# Separate clone of remotion-dev/skills
+/skills/
+
 # OS and local tool files
 .DS_Store
 Thumbs.db

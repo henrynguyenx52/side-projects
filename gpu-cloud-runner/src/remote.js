@@ -18,9 +18,10 @@ export function expandCommand(template, context) {
     videos: context.videos.map(shellQuote).join(' '),
     prompt: shellQuote(context.prompt || ''),
     runner: shellQuote(context.runner || ''),
+    workflow: shellQuote(context.workflow || ''),
   };
 
-  return template.replace(/\{(input_dir|output_dir|images|videos|prompt|runner)\}/g, (_, key) => replacements[key]);
+  return template.replace(/\{(input_dir|output_dir|images|videos|prompt|runner|workflow)\}/g, (_, key) => replacements[key]);
 }
 
 export function validateRemoteBase(remoteBase) {

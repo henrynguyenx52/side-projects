@@ -50,6 +50,7 @@ Các placeholder hỗ trợ:
 | `{videos}` | Danh sách path video, đã shell-quote |
 | `{prompt}` | Prompt, đã shell-quote |
 | `{runner}` | Worker script được app upload cho preset tích hợp |
+| `{workflow}` | Workflow JSON được app upload cho preset SCAIL2 |
 
 Ví dụ:
 
@@ -60,6 +61,43 @@ python /opt/my-model/infer.py \
   --prompt {prompt} \
   --output {output_dir}
 ```
+
+## Preset cài SCAIL2 v4.6
+
+Chọn **Máy yếu (FP8) · chỉ cài setup** để GPU tự nhận file `22_v4.6_full_15s_fast_low_memory.json` ở thư mục cha của app. Preset không cần chọn ảnh/video. Nó sẽ:
+
+- kiểm tra SageAttention ngay đầu setup. Runner dùng bản đang cài nếu kernel chạy được, hoặc tìm wheel Linux x86_64 của PixelOven khớp Python, PyTorch, CUDA và GPU, xác thực SHA-256 rồi test kernel. Nếu bước này lỗi, job dừng trước khi cài ComfyUI hay tải model;
+- cài ComfyUI tại `/workspace/ComfyUI` nếu chưa có;
+- cài custom nodes SCAIL2 Easy, KJNodes, VideoHelperSuite, ComfyUI Essentials và ComfyLiterals;
+- kiểm tra lại kernel SageAttention nếu vừa cài các phụ thuộc;
+- đọc workflow và tải bảy model từ Hugging Face vào `models/checkpoints`, `diffusion_models`, `text_encoders`, `clip_vision`, `loras` và `vae`; checkpoint diffusion FP16 trong workflow được tự thay bằng bản `fp8_scaled` để giảm khoảng một nửa RAM model;
+- tải `install-report.json` về thư mục output local sau khi hoàn tất.
+
+Các file đã có (lớn hơn 1 MB) được giữ nguyên nên có thể chạy lại an toàn. Nên chuẩn bị ít nhất 40–45 GB trống cho bộ model FP8. Muốn dùng thư mục khác, sửa đối số `--comfyui` trong command của preset.
+
+Trước khi tải model, runner hỏi dung lượng các file còn thiếu, trừ phần `.part` đã tải và giữ 2 GiB dự phòng cho output trên mỗi ổ chứa output. Job dừng sớm nếu thiếu disk hoặc chưa xác định được dung lượng nguồn. Báo cáo `install-report.json` ghi thời gian setup, `run-report.json` ghi thời gian render và xử lý output, còn `job-timings.json` ghi thời gian SSH, upload, chạy remote và tải kết quả về máy.
+
+## Preset chạy SCAIL2 end-to-end
+
+Chọn **SCAIL2 v4.6 · máy yếu (FP8) · 15 giây**, sau đó chọn đúng một ảnh reference và một driving video. Pipeline sẽ tự động:
+
+1. chạy installer nếu ComfyUI, custom nodes, SageAttention, FFmpeg, comfy-cli hoặc model còn thiếu;
+2. chuyển video về 30 FPS CFR và đúng 450 frame: clip dài bị cắt ở 15 giây, clip ngắn lặp frame cuối; giữ audio gốc hoặc thêm silent AAC track nếu nguồn không có tiếng;
+3. chép input với tên job-unique vào root `ComfyUI/input` để VideoHelperSuite nhận diện video;
+4. thay ảnh/video, tháo liên kết INT không tương thích khỏi `force_rate`, chọn diffusion FP8 và đặt output prefix riêng;
+5. tự chọn SageAttention FP8++ cho GPU SM89+ hoặc FP16 CUDA cho GPU SM80/SM86;
+6. mở một ComfyUI server loopback tạm thời, chuyển UI workflow sang API format và queue bằng comfy-cli;
+7. thêm 3 guard frame để Wan sampling 453 frame (`4n+1`), trim về đúng 450 frame, và encode ở native resolution để tránh giữ batch 1080×1920 trong RAM;
+8. dừng ComfyUI để giải phóng toàn bộ model, rồi dùng FFmpeg upscale MP4 lên 1080×1920;
+9. thu MP4, `run-report.json` và `comfyui.log` về output local rồi xoá input của job.
+
+Nếu WebSocket bị ngắt sau khi sampling, pipeline kiểm tra `/history/{prompt_id}` để phục hồi job đã hoàn tất. Nếu ComfyUI thực sự crash, app tải `comfyui.log` về Local outputs và đưa phần log cuối vào thông báo lỗi.
+
+Lần chạy đầu có thể mất nhiều thời gian vì phải cài và tải model. Các lần sau bỏ qua phần đã có. Pipeline chỉ bind ComfyUI vào `127.0.0.1`, không mở cổng GPU ra Internet.
+
+Preset **SCAIL2 v4.6 · máy khỏe (FP16) · 15 giây** dùng `22_v4.6_full_15s_fast.json` và worker riêng. Worker cài checkpoint FP16 nếu thiếu, tái sử dụng các model dùng chung và tải MP4 1080×1920 do ComfyUI xuất trực tiếp về máy. Workflow lấy 450 frame ở 30 FPS, thêm 3 frame cho sampling và trim 3 frame trước khi xuất.
+
+Chọn **Máy khỏe (FP16) · chỉ cài setup** để cài trước các thành phần và model cho Fast 15s. Preset dùng cùng thư mục ComfyUI với lúc render và tự tải `install-report.json` về Local outputs. Không cần chọn ảnh hoặc video.
 
 ## Lưu ý bảo mật
 

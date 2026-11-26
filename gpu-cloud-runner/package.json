@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test"
+    "test": "node --test && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote -p 'test_*.py'"
   },
   "dependencies": {
     "express": "^5.1.0",
