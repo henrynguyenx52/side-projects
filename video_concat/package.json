@@ -1,0 +1,13 @@
+{
+  "name": "audio-keeper-cut",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local browser video editor that keeps video 1 audio across a visual cut.",
+  "scripts": {
+    "start": "node scripts/start.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
