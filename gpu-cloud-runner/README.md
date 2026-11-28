@@ -22,6 +22,12 @@ Trên macOS cũng có thể double-click `start.command` sau lần `npm install`
 3. Nhập thư mục job trên remote và command chạy model.
 4. Bấm **Run on cloud GPU**. App dùng native `scp` để upload, native `ssh` để stream log, rồi native `scp -r` tải toàn bộ `{output_dir}` vào `outputs/<job-id>`.
 
+Có thể bật **Xoá watermark AIGC sau khi chạy** để thêm bước hậu xử lý cho các MP4 trong output bằng `remove-ai-watermarks video invisible` với profile `synthid` và `--long-side 1920`. Worker dùng `ffprobe` để đọc FPS nguồn, giữ FPS gốc từ 30 trở xuống và giảm video trên 30 fps về 30 fps. Runner cài tool trên GPU cloud khi cần và lưu các bản đã xử lý trong `output/aigc-cleaned/`; file gốc vẫn được giữ lại. Cloud cần Internet ở lần cài package và tải model đầu tiên.
+
+Để xử lý video có sẵn, chọn preset **Chỉ xoá watermark AIGC · SynthID**. Chọn từ 1 đến 10 video MP4, MOV hoặc M4V rồi bấm **Run on cloud GPU**. Preset chạy cùng cấu hình SynthID trên CUDA và tải các bản đã xử lý về Local outputs.
+
+Preset **Chỉ xoá watermark AIGC · Wan 2.1** chạy profile `wan21-synthid` trên GPU NVIDIA có CUDA và BF16. Lần đầu tool tải model Wan 2.1. Với video trên 30 fps, worker dùng FFmpeg tạo bản tạm 30 fps trước khi chạy Wan. Các video từ 30 fps trở xuống được đưa thẳng vào model. Kết quả nằm trong `aigc-cleaned/` ở Local outputs.
+
 ## WARP + direct SSH
 
 - App parse direct host/port/key từ command SSH; `-L`, `-R`, `-D` không được mang sang các process job.

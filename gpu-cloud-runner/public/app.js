@@ -10,6 +10,13 @@ const jobId = document.querySelector('#job-id');
 const outputList = document.querySelector('#output-list');
 const outputCount = document.querySelector('#output-count');
 const runButton = form.querySelector('.run-button');
+const imageInput = form.elements.images;
+const videoInput = form.elements.videos;
+const videoZone = videoInput.closest('.dropzone');
+const commandField = document.querySelector('#model-command-field');
+const commandTokens = form.querySelector('.tokens');
+const aigcOption = form.querySelector('.aigc-option');
+const standaloneCleanerPresets = ['aigc_clean', 'aigc_wan'];
 let eventSource;
 const seenLogs = new Set();
 const presetCommands = {
@@ -24,11 +31,22 @@ presetCommands.scail2_full_install = presetCommands.scail2_install + ' --install
 
 const statusMeta = {
   queued: ['Đang xếp hàng', 5], connecting: ['Đang kết nối', 12], preparing: ['Kiểm tra GPU', 20], uploading: ['Đang upload', 30],
-  running: ['Model đang chạy', 55], downloading: ['Đang tải kết quả', 85], completed: ['Hoàn tất', 100], failed: ['Thất bại', 100],
+  running: ['Model đang chạy', 55], cleaning: ['Đang xoá watermark AIGC', 65], downloading: ['Đang tải kết quả', 85], completed: ['Hoàn tất', 100], failed: ['Thất bại', 100],
 };
 
-modelPreset.addEventListener('change', () => {
-  form.elements.command.value = presetCommands[modelPreset.value];
+function updatePreset() {
+  const standaloneCleaner = standaloneCleanerPresets.includes(modelPreset.value);
+  form.elements.command.value = presetCommands[modelPreset.value] ?? '';
+  form.elements.command.disabled = standaloneCleaner;
+  commandField.classList.toggle('hidden', standaloneCleaner);
+  commandTokens.classList.toggle('hidden', standaloneCleaner);
+  form.elements.cleanAigc.disabled = standaloneCleaner;
+  aigcOption.classList.toggle('hidden', standaloneCleaner);
+  imageInput.disabled = standaloneCleaner;
+  imageInput.closest('.dropzone').classList.toggle('hidden', standaloneCleaner);
+  videoInput.accept = standaloneCleaner ? '.mp4,.mov,.m4v' : 'video/*';
+  videoZone.querySelector('strong').textContent = standaloneCleaner ? 'Video cần xử lý' : 'Video reference';
+  videoZone.querySelector('small').textContent = standaloneCleaner ? 'MP4, MOV, M4V' : 'MP4, MOV, WEBM…';
   document.querySelector('.prompt-field').classList.toggle('hidden', modelPreset.value !== 'custom');
   const note = document.querySelector('#preset-note');
   note.classList.toggle('hidden', modelPreset.value === 'custom');
@@ -39,11 +57,16 @@ modelPreset.addEventListener('change', () => {
     scail2_full_install: ['SCAIL2 Fast 15s · chỉ cài FP16', 'Cài ComfyUI, custom nodes, SageAttention và model FP16. Không cần ảnh hoặc video.'],
     scail2_install: ['SCAIL2 v4.6 installer', 'Chỉ cài ComfyUI, custom nodes, SageAttention và toàn bộ model; không cần chọn input.'],
     rvm: ['RVM test flow', 'Xuất preview nền xanh, foreground và alpha matte cho mỗi video.'],
+    aigc_clean: ['Xoá watermark AIGC trên GPU', 'Chọn từ 1 đến 10 video MP4, MOV hoặc M4V. App tải các bản đã xử lý về Local outputs.'],
+    aigc_wan: ['Xoá watermark AIGC bằng Wan 2.1', 'Chọn từ 1 đến 10 video MP4, MOV hoặc M4V. Lần đầu GPU sẽ tải model Wan 2.1.'],
   };
   const [title, description] = notes[modelPreset.value] || ['', ''];
   note.querySelector('strong').textContent = title;
   note.querySelector('span').textContent = description;
-});
+}
+
+modelPreset.addEventListener('change', updatePreset);
+updatePreset();
 
 for (const input of form.querySelectorAll('.dropzone input')) {
   const zone = input.closest('.dropzone');
@@ -89,8 +112,12 @@ testButton.addEventListener('click', async () => {
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const images = form.elements.images.files.length;
-  const videos = form.elements.videos.files.length;
+  const standaloneCleaner = standaloneCleanerPresets.includes(modelPreset.value);
+  const images = imageInput.disabled ? 0 : imageInput.files.length;
+  const videos = videoInput.files.length;
+  if (standaloneCleaner && (videos < 1 || videos > 10 || [...videoInput.files].some((file) => !/\.(mp4|mov|m4v)$/i.test(file.name)))) {
+    return showFormError('Chọn từ 1 đến 10 video MP4, MOV hoặc M4V để xoá watermark AIGC.');
+  }
   const installOnly = ['scail2_install', 'scail2_full_install'].includes(modelPreset.value);
   if (!images && !videos && !installOnly) return showFormError('Chọn ít nhất một ảnh hoặc video reference.');
   if (modelPreset.value === 'rvm' && !videos) return showFormError('RVM cần ít nhất một video reference.');

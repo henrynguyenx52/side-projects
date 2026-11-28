@@ -13,6 +13,11 @@ const rootDir = path.resolve(__dirname, '..');
 const outputRoot = path.join(rootDir, 'outputs');
 const tempRoot = path.join(rootDir, '.tmp');
 const rvmRunnerPath = path.join(rootDir, 'remote', 'rvm_runner.py');
+const aigcCleanerPath = path.join(rootDir, 'remote', 'aigc_cleaner.py');
+const aigcProfiles = new Map([
+  ['aigc_clean', 'synthid'],
+  ['aigc_wan', 'wan21-synthid'],
+]);
 const scail2InstallerPath = path.join(rootDir, 'remote', 'scail2_installer.py');
 const scail2PipelinePath = path.join(rootDir, 'remote', 'scail2_pipeline.py');
 const scail2WorkflowFilename = '22_v4.6_full_15s_fast_low_memory.json';
@@ -185,9 +190,19 @@ app.post('/api/jobs', upload.fields([{ name: 'images', maxCount: 10 }, { name: '
     const ssh = sshConfigFromBody(req.body);
     const remoteBase = validateRemoteBase(req.body.remoteBase || `/home/${ssh.username}/gpu-jobs`);
     const requestedPreset = req.body.preset === 'scail2' ? 'scail2_install' : req.body.preset;
-    const preset = ['rvm', ...scail2InstallPresets, ...scail2RunPresets].includes(requestedPreset) ? requestedPreset : 'custom';
-    const commandTemplate = req.body.command?.trim();
-    if (!commandTemplate) throw new Error('Cần nhập command chạy model');
+    const standaloneCleaner = aigcProfiles.has(requestedPreset);
+    const preset = standaloneCleaner || ['rvm', ...scail2InstallPresets, ...scail2RunPresets].includes(requestedPreset)
+      ? requestedPreset
+      : 'custom';
+    const commandTemplate = standaloneCleaner ? '' : req.body.command?.trim();
+    if (standaloneCleaner) {
+      const videos = req.files?.videos || [];
+      if (req.files?.images?.length || !videos.length || videos.some((file) => !/\.(mp4|mov|m4v)$/i.test(file.originalname))) {
+        throw new Error('Preset xoá watermark AIGC chỉ nhận từ 1 đến 10 video MP4, MOV hoặc M4V.');
+      }
+    } else if (!commandTemplate) {
+      throw new Error('Cần nhập command chạy model');
+    }
     if (!uploaded.length && !scail2InstallPresets.includes(preset)) throw new Error('Cần chọn ít nhất một ảnh hoặc video reference');
     if (uploaded.length && preset === 'scail2_full_install') throw new Error('Preset chỉ cài FP16 không nhận ảnh hoặc video');
     if (preset === 'rvm' && !(req.files?.videos || []).length) throw new Error('Preset RVM cần ít nhất một video reference');
@@ -204,6 +219,7 @@ app.post('/api/jobs', upload.fields([{ name: 'images', maxCount: 10 }, { name: '
       remoteBase,
       remoteJobDir: `${remoteBase}/${id}`,
       preset,
+      cleanAigc: !standaloneCleaner && req.body.cleanAigc === 'true',
       commandTemplate,
       prompt: req.body.prompt || '',
       files: uploaded,
@@ -224,6 +240,8 @@ app.post('/api/jobs', upload.fields([{ name: 'images', maxCount: 10 }, { name: '
 
 async function runJob(job) {
   const startedAt = performance.now();
+  const aigcProfile = aigcProfiles.get(job.preset);
+  const standaloneCleaner = Boolean(aigcProfile);
   const isScail2 = [...scail2InstallPresets, ...scail2RunPresets].includes(job.preset);
   try {
     const scail2Full = ['scail2_full', 'scail2_full_install'].includes(job.preset);
@@ -296,8 +314,11 @@ async function runJob(job) {
 
     for (let index = 0; index < job.files.length; index += 1) {
       const file = job.files[index];
-      let name = safeName(file.originalname);
-      if (usedNames.has(name)) name = `${index + 1}-${name}`;
+      const baseName = standaloneCleaner
+        ? `${safeName(file.originalname.slice(0, -4)).slice(0, 136)}${file.originalname.slice(-4).toLowerCase()}`
+        : safeName(file.originalname);
+      let name = baseName;
+      for (let suffix = index + 1; usedNames.has(name); suffix += 1) name = `${suffix}-${baseName}`;
       usedNames.add(name);
       const remotePath = `${inputDir}/${name}`;
       log(job, `Native SCP upload ${file.originalname} (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
@@ -305,10 +326,18 @@ async function runJob(job) {
       (job.imageTempNames.has(file.filename) ? images : videos).push(remotePath);
     }
 
-    const command = expandCommand(job.commandTemplate, { inputDir, outputDir, images, videos, prompt: job.prompt, runner, workflow });
+    const aigcCleaner = `${job.remoteJobDir}/aigc_cleaner.py`;
+    const cleanerCommand = `if [ -x /venv/main/bin/python ]; then PYTHON=/venv/main/bin/python; else PYTHON=python3; fi; "$PYTHON" ${shellQuote(aigcCleaner)} --output-dir ${shellQuote(outputDir)}`;
+    if (standaloneCleaner || job.cleanAigc) {
+      log(job, `Upload worker xoá watermark AIGC · ${aigcProfile ?? 'synthid'}`);
+      await uploadFile(job.ssh, aigcCleanerPath, aigcCleaner);
+    }
+    const command = standaloneCleaner
+      ? `${cleanerCommand} --profile ${shellQuote(aigcProfile)} --inputs ${videos.map(shellQuote).join(' ')}`
+      : expandCommand(job.commandTemplate, { inputDir, outputDir, images, videos, prompt: job.prompt, runner, workflow });
     const remoteStartedAt = performance.now();
-    setStatus(job, 'running');
-    log(job, `Chạy model trong ${job.remoteJobDir}`);
+    setStatus(job, standaloneCleaner ? 'cleaning' : 'running');
+    log(job, `${standaloneCleaner ? 'Xoá watermark AIGC' : 'Chạy model'} trong ${job.remoteJobDir}`);
     const wrapped = `cd ${shellQuote(job.remoteJobDir)} && bash -lc ${shellQuote(command)}`;
     const result = await execRemote(
       job.ssh,
@@ -316,7 +345,21 @@ async function runJob(job) {
       (chunk) => chunk.split('\n').filter(Boolean).forEach((line) => log(job, line, 'stdout')),
       (chunk) => chunk.split('\n').filter(Boolean).forEach((line) => log(job, line, 'stderr')),
     );
-    if (result.code !== 0) throw new Error(`Model command kết thúc với exit code ${result.code}${result.signal ? ` (${result.signal})` : ''}`);
+    if (result.code !== 0) {
+      const task = standaloneCleaner ? 'Xoá watermark AIGC' : 'Model command';
+      throw new Error(`${task} kết thúc với exit code ${result.code}${result.signal ? ` (${result.signal})` : ''}`);
+    }
+    if (job.cleanAigc) {
+      setStatus(job, 'cleaning');
+      log(job, 'Bắt đầu bước xoá watermark SynthID cho MP4 trong output');
+      const cleanResult = await execRemote(
+        job.ssh,
+        `cd ${shellQuote(job.remoteJobDir)} && bash -lc ${shellQuote(cleanerCommand)}`,
+        (chunk) => chunk.split('\n').filter(Boolean).forEach((line) => log(job, line, 'stdout')),
+        (chunk) => chunk.split('\n').filter(Boolean).forEach((line) => log(job, line, 'stderr')),
+      );
+      if (cleanResult.code !== 0) throw new Error(`Bước xoá watermark AIGC thất bại với exit code ${cleanResult.code}`);
+    }
     const remoteFinishedAt = performance.now();
 
     setStatus(job, 'downloading');

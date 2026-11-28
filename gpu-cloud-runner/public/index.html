@@ -68,11 +68,13 @@
               <option value="scail2_full_install">Máy khỏe (FP16) · chỉ cài setup</option>
               <option value="scail2_install">Máy yếu (FP8) · chỉ cài setup</option>
               <option value="rvm">Robust Video Matting · MobileNetV3</option>
+              <option value="aigc_clean">Chỉ xoá watermark AIGC · SynthID</option>
+              <option value="aigc_wan">Chỉ xoá watermark AIGC · Wan 2.1</option>
               <option value="custom">Custom command</option>
             </select></label>
             <div class="preset-note" id="preset-note"><strong>SCAIL2 v4.6 · tối đa 15 giây</strong><span>Chọn đúng 1 ảnh và 1 video. App tự giới hạn 450 frame, chạy workflow low-memory và tải MP4 về local.</span></div>
             <label class="field"><span>Remote workspace</span><input name="remoteBase" value="/workspace/gpu-jobs" required /></label>
-            <label class="field command-field">
+            <label class="field command-field" id="model-command-field">
               <span>Command</span>
               <textarea name="command" rows="5" spellcheck="false" required>if [ -x /venv/main/bin/python ]; then PYTHON=/venv/main/bin/python; else PYTHON=python3; fi; "$PYTHON" {runner} --comfyui /workspace/ComfyUI --workflow {workflow} --image {images} --video {videos} --output-dir {output_dir}</textarea>
             </label>
@@ -80,6 +82,7 @@
               <button type="button" data-token="{runner}">{runner}</button><button type="button" data-token="{workflow}">{workflow}</button><button type="button" data-token="{input_dir}">{input_dir}</button><button type="button" data-token="{output_dir}">{output_dir}</button><button type="button" data-token="{images}">{images}</button><button type="button" data-token="{videos}">{videos}</button><button type="button" data-token="{prompt}">{prompt}</button>
             </div>
             <label class="field prompt-field hidden"><span>Prompt <small>(tuỳ chọn)</small></span><textarea name="prompt" rows="3" placeholder="Mô tả kết quả ní muốn model tạo…"></textarea></label>
+            <label class="aigc-option"><input name="cleanAigc" type="checkbox" value="true" /><span><strong>Xoá watermark AIGC sau khi chạy</strong><small>Chạy remove-ai-watermarks profile SynthID trên các MP4 trong output.</small></span></label>
           </section>
 
           <button class="button primary run-button" type="submit"><span>Run on cloud GPU</span><i></i></button>
