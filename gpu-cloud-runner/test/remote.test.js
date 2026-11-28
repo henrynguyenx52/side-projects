@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { expandCommand, parsePort, parseSshCommand, safeName, shellQuote, validateRemoteBase } from '../src/remote.js';
+import {
+  createLineReader,
+  expandCommand,
+  parseAigcProgressLine,
+  parsePort,
+  parseSshCommand,
+  safeName,
+  shellQuote,
+  validateRemoteBase,
+} from '../src/remote.js';
 
 test('shellQuote protects apostrophes', () => {
   assert.equal(shellQuote("a'b"), `'a'"'"'b'`);
@@ -37,4 +46,23 @@ test('parses identity file and quoted paths', () => {
     parseSshCommand('ssh -i "~/.ssh/cloud key" ubuntu@gpu.example.com -p 2222'),
     { host: 'gpu.example.com', port: 2222, username: 'ubuntu', identityFile: '~/.ssh/cloud key' },
   );
+});
+
+test('parseAigcProgressLine parses valid progress markers and rejects normal logs', () => {
+  assert.deepEqual(
+    parseAigcProgressLine('@@PROGRESS {"percent": 42, "stage": "Chunk 2/4 · Step 1/3", "eta_seconds": 85}'),
+    { percent: 42, stage: 'Chunk 2/4 · Step 1/3', etaSeconds: 85 },
+  );
+  assert.equal(parseAigcProgressLine('Normal stdout log'), null);
+  assert.equal(parseAigcProgressLine('@@PROGRESS {bad json'), null);
+});
+
+test('createLineReader handles partial chunks and trailing flush', () => {
+  const lines = [];
+  const reader = createLineReader((line) => lines.push(line));
+  reader.push('first\nsec');
+  reader.push('ond\r\nthird');
+  assert.deepEqual(lines, ['first', 'second']);
+  reader.flush();
+  assert.deepEqual(lines, ['first', 'second', 'third']);
 });

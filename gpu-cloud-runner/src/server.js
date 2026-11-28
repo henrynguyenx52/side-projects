@@ -6,7 +6,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import multer from 'multer';
-import { expandCommand, parseSshCommand, safeName, shellQuote, validateRemoteBase } from './remote.js';
+import {
+  createLineReader,
+  expandCommand,
+  parseAigcProgressLine,
+  parseSshCommand,
+  safeName,
+  shellQuote,
+  validateRemoteBase,
+} from './remote.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -41,6 +49,17 @@ const upload = multer({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(rootDir, 'public')));
 
+const STATUS_PROGRESS = {
+  queued: [2, 'Đang xếp hàng'],
+  connecting: [6, 'Đang kết nối SSH'],
+  preparing: [12, 'Kiểm tra môi trường GPU'],
+  uploading: [18, 'Đang upload video lên GPU'],
+  running: [45, 'Model đang chạy'],
+  cleaning: [20, 'Đang chuẩn bị xoá AIGC'],
+  downloading: [96, 'Đang tải kết quả về máy'],
+  completed: [100, 'Hoàn tất'],
+};
+
 function publicJob(job) {
   return {
     id: job.id,
@@ -49,6 +68,7 @@ function publicJob(job) {
     updatedAt: job.updatedAt,
     remoteJobDir: job.remoteJobDir,
     error: job.error,
+    progress: job.progress || { percent: 0, stage: 'Chờ chạy', etaSeconds: null, updatedAt: job.updatedAt },
     outputs: job.outputs,
     logs: job.logs.slice(-500),
   };
@@ -61,8 +81,31 @@ function log(job, message, stream = 'info') {
   for (const response of job.listeners) response.write(`data: ${JSON.stringify({ type: 'log', entry })}\n\n`);
 }
 
+function setProgress(job, progress) {
+  const updatedAt = new Date().toISOString();
+  job.progress = {
+    percent: progress.percent,
+    stage: progress.stage,
+    etaSeconds: typeof progress.etaSeconds === 'number' ? progress.etaSeconds : null,
+    updatedAt,
+  };
+  job.updatedAt = updatedAt;
+  for (const response of job.listeners) response.write(`data: ${JSON.stringify({ type: 'status', job: publicJob(job) })}\n\n`);
+}
+
 function setStatus(job, status, extra = {}) {
-  Object.assign(job, extra, { status, updatedAt: new Date().toISOString() });
+  const now = new Date().toISOString();
+  const preset = STATUS_PROGRESS[status];
+  let nextProgress = job.progress;
+  if (status === 'failed') {
+    nextProgress = { percent: job.progress?.percent ?? 0, stage: 'Thất bại', etaSeconds: null, updatedAt: now };
+  } else if (status === 'completed') {
+    nextProgress = { percent: 100, stage: 'Hoàn tất', etaSeconds: 0, updatedAt: now };
+  } else if (preset) {
+    const keepGranular = status === 'cleaning' && (job.progress?.percent ?? 0) > preset[0];
+    if (!keepGranular) nextProgress = { percent: preset[0], stage: preset[1], etaSeconds: null, updatedAt: now };
+  }
+  Object.assign(job, extra, { status, updatedAt: now, progress: nextProgress });
   for (const response of job.listeners) response.write(`data: ${JSON.stringify({ type: 'status', job: publicJob(job) })}\n\n`);
 }
 
@@ -111,6 +154,27 @@ function runProcess(program, args, onStdout = () => {}, onStderr = () => {}) {
 function execRemote(config, command, onStdout = () => {}, onStderr = () => {}) {
   const target = `${config.username}@${config.host}`;
   return runProcess('ssh', [...sshArgs(config), target, command], onStdout, onStderr);
+}
+
+async function execRemoteJob(job, command) {
+  const stdoutReader = createLineReader((line) => {
+    const progress = parseAigcProgressLine(line);
+    if (progress) {
+      setProgress(job, progress);
+      return;
+    }
+    log(job, line, 'stdout');
+  });
+  const stderrReader = createLineReader((line) => log(job, line, 'stderr'));
+  const result = await execRemote(
+    job.ssh,
+    command,
+    (chunk) => stdoutReader.push(chunk),
+    (chunk) => stderrReader.push(chunk),
+  );
+  stdoutReader.flush();
+  stderrReader.flush();
+  return result;
 }
 
 async function uploadFile(config, localPath, remotePath) {
@@ -226,6 +290,7 @@ app.post('/api/jobs', upload.fields([{ name: 'images', maxCount: 10 }, { name: '
       imageTempNames: new Set((req.files?.images || []).map((file) => file.filename)),
       logs: [],
       listeners: new Set(),
+      progress: { percent: 2, stage: 'Đang xếp hàng', etaSeconds: null, updatedAt: new Date().toISOString() },
       outputs: [],
       error: null,
     };
@@ -329,7 +394,7 @@ async function runJob(job) {
     const aigcCleaner = `${job.remoteJobDir}/aigc_cleaner.py`;
     const cleanerCommand = `if [ -x /venv/main/bin/python ]; then PYTHON=/venv/main/bin/python; else PYTHON=python3; fi; "$PYTHON" ${shellQuote(aigcCleaner)} --output-dir ${shellQuote(outputDir)}`;
     if (standaloneCleaner || job.cleanAigc) {
-      log(job, `Upload worker xoá watermark AIGC · ${aigcProfile ?? 'synthid'}`);
+      log(job, `Upload worker xoá watermark AIGC · ${aigcProfile ?? 'wan21-synthid'}`);
       await uploadFile(job.ssh, aigcCleanerPath, aigcCleaner);
     }
     const command = standaloneCleaner
@@ -339,24 +404,17 @@ async function runJob(job) {
     setStatus(job, standaloneCleaner ? 'cleaning' : 'running');
     log(job, `${standaloneCleaner ? 'Xoá watermark AIGC' : 'Chạy model'} trong ${job.remoteJobDir}`);
     const wrapped = `cd ${shellQuote(job.remoteJobDir)} && bash -lc ${shellQuote(command)}`;
-    const result = await execRemote(
-      job.ssh,
-      wrapped,
-      (chunk) => chunk.split('\n').filter(Boolean).forEach((line) => log(job, line, 'stdout')),
-      (chunk) => chunk.split('\n').filter(Boolean).forEach((line) => log(job, line, 'stderr')),
-    );
+    const result = await execRemoteJob(job, wrapped);
     if (result.code !== 0) {
       const task = standaloneCleaner ? 'Xoá watermark AIGC' : 'Model command';
       throw new Error(`${task} kết thúc với exit code ${result.code}${result.signal ? ` (${result.signal})` : ''}`);
     }
     if (job.cleanAigc) {
       setStatus(job, 'cleaning');
-      log(job, 'Bắt đầu bước xoá watermark SynthID cho MP4 trong output');
-      const cleanResult = await execRemote(
-        job.ssh,
-        `cd ${shellQuote(job.remoteJobDir)} && bash -lc ${shellQuote(cleanerCommand)}`,
-        (chunk) => chunk.split('\n').filter(Boolean).forEach((line) => log(job, line, 'stdout')),
-        (chunk) => chunk.split('\n').filter(Boolean).forEach((line) => log(job, line, 'stderr')),
+      log(job, 'Bắt đầu bước xoá watermark Wan 2.1 (8 steps) cho MP4 trong output');
+      const cleanResult = await execRemoteJob(
+        job,
+        `cd ${shellQuote(job.remoteJobDir)} && bash -lc ${shellQuote(`${cleanerCommand} --profile wan21-synthid --wan-steps 8`)}`,
       );
       if (cleanResult.code !== 0) throw new Error(`Bước xoá watermark AIGC thất bại với exit code ${cleanResult.code}`);
     }

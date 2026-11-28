@@ -93,3 +93,42 @@ export function parseSshCommand(command) {
 
   return { host, port, username, identityFile };
 }
+
+export function parseAigcProgressLine(line) {
+  const prefix = '@@PROGRESS ';
+  if (!line || !line.startsWith(prefix)) return null;
+  try {
+    const parsed = JSON.parse(line.slice(prefix.length));
+    if (typeof parsed.percent !== 'number' || typeof parsed.stage !== 'string') return null;
+    const progress = {
+      percent: Math.max(0, Math.min(100, Math.round(parsed.percent))),
+      stage: parsed.stage,
+    };
+    if (typeof parsed.eta_seconds === 'number' && Number.isFinite(parsed.eta_seconds) && parsed.eta_seconds >= 0) {
+      progress.etaSeconds = Math.round(parsed.eta_seconds);
+    }
+    return progress;
+  } catch {
+    return null;
+  }
+}
+
+export function createLineReader(onLine) {
+  let buffer = '';
+  return {
+    push(chunk) {
+      buffer += String(chunk);
+      const lines = buffer.split(/\r?\n|\r/);
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (line) onLine(line);
+      }
+    },
+    flush() {
+      if (buffer) {
+        onLine(buffer);
+        buffer = '';
+      }
+    },
+  };
+}

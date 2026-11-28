@@ -6,6 +6,8 @@ const consoleBox = document.querySelector('#console');
 const statusDot = document.querySelector('#status-dot');
 const statusLabel = document.querySelector('#status-label');
 const progressBar = document.querySelector('#progress-bar');
+const progressStage = document.querySelector('#progress-stage');
+const progressEta = document.querySelector('#progress-eta');
 const jobId = document.querySelector('#job-id');
 const outputList = document.querySelector('#output-list');
 const outputCount = document.querySelector('#output-count');
@@ -18,6 +20,8 @@ const commandTokens = form.querySelector('.tokens');
 const aigcOption = form.querySelector('.aigc-option');
 const standaloneCleanerPresets = ['aigc_clean', 'aigc_wan'];
 let eventSource;
+let etaTicker;
+let activeJobSnapshot = null;
 const seenLogs = new Set();
 const presetCommands = {
   rvm: 'if [ -x /venv/main/bin/python ]; then PYTHON=/venv/main/bin/python; else PYTHON=python3; fi; if command -v uv >/dev/null; then uv pip install --python "$PYTHON" av pims tqdm pillow; else "$PYTHON" -m pip install --quiet av pims tqdm pillow; fi && "$PYTHON" {runner} --inputs {videos} --output-dir {output_dir}',
@@ -58,7 +62,7 @@ function updatePreset() {
     scail2_install: ['SCAIL2 v4.6 installer', 'Chỉ cài ComfyUI, custom nodes, SageAttention và toàn bộ model; không cần chọn input.'],
     rvm: ['RVM test flow', 'Xuất preview nền xanh, foreground và alpha matte cho mỗi video.'],
     aigc_clean: ['Xoá watermark AIGC trên GPU', 'Chọn từ 1 đến 10 video MP4, MOV hoặc M4V. App tải các bản đã xử lý về Local outputs.'],
-    aigc_wan: ['Xoá watermark AIGC bằng Wan 2.1', 'Chọn từ 1 đến 10 video MP4, MOV hoặc M4V. Lần đầu GPU sẽ tải model Wan 2.1.'],
+    aigc_wan: ['Xoá watermark AIGC bằng Wan 2.1 (8 steps)', 'Chọn từ 1 đến 10 video MP4, MOV hoặc M4V. Worker tải song song model, chạy Wan 720p BF16 với log tiến độ từng step và upscale lại độ phân giải gốc.'],
   };
   const [title, description] = notes[modelPreset.value] || ['', ''];
   note.querySelector('strong').textContent = title;
@@ -165,10 +169,58 @@ function followJob(job) {
   };
 }
 
+function formatDuration(totalSeconds) {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${secs}s`;
+  return `${secs}s`;
+}
+
+function renderProgressMeta(job) {
+  const label = (statusMeta[job.status] || [job.status, 0])[0];
+  const fallbackPercent = (statusMeta[job.status] || [job.status, 0])[1];
+  const progress = job.progress || {};
+  const percent = typeof progress.percent === 'number' ? progress.percent : fallbackPercent;
+  const stage = progress.stage || label;
+  progressBar.style.width = `${percent}%`;
+  progressStage.textContent = `${percent}% · ${stage}`;
+
+  if (job.status === 'completed') {
+    const totalMs = job.createdAt && job.updatedAt ? Date.parse(job.updatedAt) - Date.parse(job.createdAt) : 0;
+    progressEta.textContent = totalMs > 0 ? `Tổng ${formatDuration(totalMs / 1000)}` : 'Xong 100%';
+    return;
+  }
+  if (job.status === 'failed') {
+    progressEta.textContent = 'Đã dừng';
+    return;
+  }
+  if (typeof progress.etaSeconds === 'number') {
+    const elapsedSinceUpdate = progress.updatedAt ? Math.max(0, (Date.now() - Date.parse(progress.updatedAt)) / 1000) : 0;
+    const remaining = Math.max(0, progress.etaSeconds - elapsedSinceUpdate);
+    const finishAt = new Date(Date.now() + remaining * 1000).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    progressEta.textContent = remaining > 0 ? `Còn ~${formatDuration(remaining)} · Xong ~${finishAt}` : 'Sắp xong…';
+    return;
+  }
+  progressEta.textContent = 'Đang ước lượng…';
+}
+
+function syncEtaTicker(job) {
+  clearInterval(etaTicker);
+  activeJobSnapshot = job;
+  if (!job || ['completed', 'failed'].includes(job.status)) return;
+  etaTicker = setInterval(() => {
+    if (activeJobSnapshot) renderProgressMeta(activeJobSnapshot);
+  }, 1000);
+}
+
 function setStatus(job) {
-  const [label, progress] = statusMeta[job.status] || [job.status, 0];
+  const [label] = statusMeta[job.status] || [job.status, 0];
   statusLabel.textContent = label;
-  progressBar.style.width = `${progress}%`;
+  renderProgressMeta(job);
+  syncEtaTicker(job);
   statusDot.className = `status-dot ${job.status === 'failed' ? 'error' : job.status === 'completed' ? 'done' : 'active'}`;
   for (const entry of job.logs || []) appendLog(entry);
   if (job.outputs) renderOutputs(job.id, job.outputs);
@@ -194,7 +246,12 @@ function renderOutputs(id, outputs) {
 }
 
 function resetConsole() {
+  clearInterval(etaTicker);
+  activeJobSnapshot = null;
   seenLogs.clear();
+  progressBar.style.width = '0%';
+  progressStage.textContent = '0% · Đang khởi tạo job…';
+  progressEta.textContent = 'Đang ước lượng…';
   consoleBox.innerHTML = '<p class="empty-console">Đang khởi tạo job…</p>';
   outputList.innerHTML = '<p>Chưa có kết quả.</p>';
   outputCount.textContent = '0 files';

@@ -22,11 +22,11 @@ Trên macOS cũng có thể double-click `start.command` sau lần `npm install`
 3. Nhập thư mục job trên remote và command chạy model.
 4. Bấm **Run on cloud GPU**. App dùng native `scp` để upload, native `ssh` để stream log, rồi native `scp -r` tải toàn bộ `{output_dir}` vào `outputs/<job-id>`.
 
-Có thể bật **Xoá watermark AIGC sau khi chạy** để thêm bước hậu xử lý cho các MP4 trong output bằng `remove-ai-watermarks video invisible` với profile `synthid` và `--long-side 1920`. Worker dùng `ffprobe` để đọc FPS nguồn, giữ FPS gốc từ 30 trở xuống và giảm video trên 30 fps về 30 fps. Runner cài tool trên GPU cloud khi cần và lưu các bản đã xử lý trong `output/aigc-cleaned/`; file gốc vẫn được giữ lại. Cloud cần Internet ở lần cài package và tải model đầu tiên.
+Có thể bật **Xoá watermark AIGC sau khi chạy** để thêm bước hậu xử lý cho các MP4 trong output bằng worker Wan 2.1 tối ưu (`8` steps, `BF16 + TF32`, tải song song 8 luồng + bỏ qua UMT5-XXL khi đã cache prompt). Worker dùng `ffprobe` để đọc kích thước/FPS gốc, giới hạn tối đa `30 fps`, chạy Wan ở tối đa `720p` (`193` frame/chunk) kèm log tiến độ từng step rồi dùng FFmpeg (NVENC/x264) upscale Lanczos về lại độ phân giải gốc và xoá sạch metadata; file gốc vẫn được giữ lại.
 
-Để xử lý video có sẵn, chọn preset **Chỉ xoá watermark AIGC · SynthID**. Chọn từ 1 đến 10 video MP4, MOV hoặc M4V rồi bấm **Run on cloud GPU**. Preset chạy cùng cấu hình SynthID trên CUDA và tải các bản đã xử lý về Local outputs.
+Để xử lý video có sẵn bằng 2D VAE, chọn preset **Chỉ xoá watermark AIGC · SynthID**. Chọn từ 1 đến 10 video MP4, MOV hoặc M4V rồi bấm **Run on cloud GPU**. Preset chạy `remove-ai-watermarks==0.75.0` profile `synthid` (`--long-side 1920`) trên CUDA và tải các bản đã xử lý về Local outputs.
 
-Preset **Chỉ xoá watermark AIGC · Wan 2.1** chạy profile `wan21-synthid` trên GPU NVIDIA có CUDA và BF16. Lần đầu tool tải model Wan 2.1. Với video trên 30 fps, worker dùng FFmpeg tạo bản tạm 30 fps trước khi chạy Wan. Các video từ 30 fps trở xuống được đưa thẳng vào model. Kết quả nằm trong `aigc-cleaned/` ở Local outputs.
+Preset **Chỉ xoá watermark AIGC · Wan 2.1 (8 steps)** chạy thẳng pipeline Wan 2.1 tối ưu trên GPU NVIDIA hỗ trợ CUDA và BF16: tải model song song với `hf_transfer`, encode prompt trên GPU và lưu cache cho các lần sau, stream FFmpeg pipe không tạo file trung gian và hiển thị tiến độ chi tiết từng chunk/step. Kết quả nằm trong `aigc-cleaned/` ở Local outputs.
 
 ## WARP + direct SSH
 

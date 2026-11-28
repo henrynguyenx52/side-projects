@@ -69,7 +69,7 @@
               <option value="scail2_install">Máy yếu (FP8) · chỉ cài setup</option>
               <option value="rvm">Robust Video Matting · MobileNetV3</option>
               <option value="aigc_clean">Chỉ xoá watermark AIGC · SynthID</option>
-              <option value="aigc_wan">Chỉ xoá watermark AIGC · Wan 2.1</option>
+              <option value="aigc_wan">Chỉ xoá watermark AIGC · Wan 2.1 (8 steps)</option>
               <option value="custom">Custom command</option>
             </select></label>
             <div class="preset-note" id="preset-note"><strong>SCAIL2 v4.6 · tối đa 15 giây</strong><span>Chọn đúng 1 ảnh và 1 video. App tự giới hạn 450 frame, chạy workflow low-memory và tải MP4 về local.</span></div>
@@ -82,7 +82,7 @@
               <button type="button" data-token="{runner}">{runner}</button><button type="button" data-token="{workflow}">{workflow}</button><button type="button" data-token="{input_dir}">{input_dir}</button><button type="button" data-token="{output_dir}">{output_dir}</button><button type="button" data-token="{images}">{images}</button><button type="button" data-token="{videos}">{videos}</button><button type="button" data-token="{prompt}">{prompt}</button>
             </div>
             <label class="field prompt-field hidden"><span>Prompt <small>(tuỳ chọn)</small></span><textarea name="prompt" rows="3" placeholder="Mô tả kết quả ní muốn model tạo…"></textarea></label>
-            <label class="aigc-option"><input name="cleanAigc" type="checkbox" value="true" /><span><strong>Xoá watermark AIGC sau khi chạy</strong><small>Chạy remove-ai-watermarks profile SynthID trên các MP4 trong output.</small></span></label>
+            <label class="aigc-option"><input name="cleanAigc" type="checkbox" value="true" /><span><strong>Xoá watermark AIGC sau khi chạy</strong><small>Chạy remove-ai-watermarks profile Wan 2.1 (8 steps) trên các MP4 trong output.</small></span></label>
           </section>
 
           <button class="button primary run-button" type="submit"><span>Run on cloud GPU</span><i></i></button>
@@ -93,6 +93,10 @@
           <div class="console-head">
             <div><span class="status-dot idle" id="status-dot"></span><strong id="status-label">Chưa chạy</strong></div>
             <span class="job-id" id="job-id">NO JOB</span>
+          </div>
+          <div class="progress-meta">
+            <span id="progress-stage">Chờ chạy</span>
+            <span id="progress-eta">—</span>
           </div>
           <div class="progress-track"><span id="progress-bar"></span></div>
           <div class="console" id="console" aria-live="polite"><p class="empty-console">Log từ cloud GPU sẽ xuất hiện ở đây.</p></div>
